@@ -4,8 +4,8 @@
 
 // TODO
 // rewrite City.display() with gradient
-// rewrite NAV - so ugly! sorry!
-//   case: approaching a line with 
+// rewrite NAV - so ugly! clean up ASAP
+//   better collision detection (momentum==N, open pixel at NNW)
 //   when going toward large city, the corner area upsets navigation
 //   DEPART - check neighbors around gate
 // use IntList & array instead of ArrayList
