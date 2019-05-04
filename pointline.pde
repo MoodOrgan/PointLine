@@ -4,14 +4,14 @@
 
 // TODO
 // rewrite City.display() with gradient
-// rewrite NAV - so ugly! clean up ASAP
+// rewrite NAV
+//   array OOB error near edges
 //   better collision detection (momentum==N, open pixel at NNW)
 //   when going toward large city, the corner area upsets navigation
 //   DEPART - check neighbors around gate
 // use IntList & array instead of ArrayList
 //   then add shuffle
 // Fade Turn - store active pixels in a data structure instead of looping over every pixel
-// fix KLUDGE
 // use angles instead of rectilinear paths?
 
 boolean DEBUG = false;
@@ -443,13 +443,10 @@ class Personoid {
       switch(momentum) {
         case 0: // N
           f   = path_map.pixels[(y-1)*canvas_w + x];
-          ff  = path_map.pixels[(y-2)*canvas_w + x];
           fl  = path_map.pixels[(y-1)*canvas_w + x-1];
           fll = path_map.pixels[(y-1)*canvas_w + x-2];
           fr  = path_map.pixels[(y-1)*canvas_w + x+1];
           frr = path_map.pixels[(y-1)*canvas_w + x+2];
-          ffl = path_map.pixels[(y-2)*canvas_w + x-1];
-          ffr = path_map.pixels[(y-2)*canvas_w + x+1];
           l   = path_map.pixels[(y)*canvas_w   + x-1];
           ll  = path_map.pixels[(y)*canvas_w   + x-2];
           r   = path_map.pixels[(y)*canvas_w   + x+1];
@@ -459,7 +456,7 @@ class Personoid {
           br  = path_map.pixels[(y+1)*canvas_w + x+1];
           brr = path_map.pixels[(y+1)*canvas_w + x+2];
           
-          if ((city == null) && (time_of_last_turn != last_step) && ((destination.y + destination.r >= y) || (y <= 2))) { // overshooting; turn...
+          if ((city == null) && (time_of_last_turn != last_step) && (destination.y + destination.r >= y)) { // overshooting; turn...
             if ((destination.x + destination.r-1 > x)
                 && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
               momentum = (momentum+1)%4; // turn E
@@ -474,6 +471,17 @@ class Personoid {
               break;
             }
           }
+          
+          if (y <= 2) {
+            momentum = (momentum+1)%4;
+            x++;
+            time_of_last_turn = now;
+            break;
+          }
+          
+          ff  = path_map.pixels[(y-2)*canvas_w + x];
+          ffl = path_map.pixels[(y-2)*canvas_w + x-1];
+          ffr = path_map.pixels[(y-2)*canvas_w + x+1];
 
           if ((y-2 >= 0)
               && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
@@ -512,13 +520,10 @@ class Personoid {
           
         case 1: // E
           f   = path_map.pixels[(y)*canvas_w   + x+1];
-          ff  = path_map.pixels[(y)*canvas_w   + x+2];
           fl  = path_map.pixels[(y-1)*canvas_w + x+1];
           fll = path_map.pixels[(y-2)*canvas_w + x+1];
           fr  = path_map.pixels[(y+1)*canvas_w + x+1];
           frr = path_map.pixels[(y+2)*canvas_w + x+1];
-          ffl = path_map.pixels[(y-1)*canvas_w + x+2];
-          ffr = path_map.pixels[(y+1)*canvas_w + x+2];
           l   = path_map.pixels[(y-1)*canvas_w   + x];
           ll  = path_map.pixels[(y-2)*canvas_w   + x];
           r   = path_map.pixels[(y+1)*canvas_w   + x];
@@ -528,7 +533,7 @@ class Personoid {
           br  = path_map.pixels[(y+1)*canvas_w + x-1];
           brr = path_map.pixels[(y+2)*canvas_w + x-1];
           
-          if ((city == null) && (time_of_last_turn != last_step) && ((destination.x - destination.r <= x) || (x >= canvas_w - 2))) {
+          if ((city == null) && (time_of_last_turn != last_step) && (destination.x - destination.r <= x)) {
             if ((destination.y + destination.r-1 > y)
                 && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
               momentum = (momentum+1)%4;
@@ -543,6 +548,18 @@ class Personoid {
               break;
             }
           }
+          
+          if (x >= canvas_w - 2) {
+            momentum = (momentum+1)%4;
+            y++;
+            time_of_last_turn = now;
+            break;
+          }
+          
+          ff  = path_map.pixels[(y)*canvas_w   + x+2];
+          ffl = path_map.pixels[(y-1)*canvas_w + x+2];
+          ffr = path_map.pixels[(y+1)*canvas_w + x+2];
+
           if ((x+2 <= canvas_w)
               && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
             x++;
@@ -580,13 +597,10 @@ class Personoid {
           
           case 2: // S
           f   = path_map.pixels[(y+1)*canvas_w + x];
-          ff  = path_map.pixels[(y+2)*canvas_w + x];
           fl  = path_map.pixels[(y+1)*canvas_w + x+1];
           fll = path_map.pixels[(y+1)*canvas_w + x+2];
           fr  = path_map.pixels[(y+1)*canvas_w + x-1];
           frr = path_map.pixels[(y+1)*canvas_w + x-2];
-          ffl = path_map.pixels[(y+2)*canvas_w + x+1];
-          ffr = path_map.pixels[(y+2)*canvas_w + x-1];
           l   = path_map.pixels[(y)*canvas_w   + x+1];
           ll  = path_map.pixels[(y)*canvas_w   + x+2];
           r   = path_map.pixels[(y)*canvas_w   + x-1];
@@ -596,7 +610,7 @@ class Personoid {
           br  = path_map.pixels[(y-1)*canvas_w + x-1];
           brr = path_map.pixels[(y-1)*canvas_w + x-2];
           
-          if ((city == null) && (time_of_last_turn != last_step) && ((destination.y - destination.r <= y) || (y >= canvas_h - 2))) {
+          if ((city == null) && (time_of_last_turn != last_step) && (destination.y - destination.r <= y)) {
             if ((destination.x - destination.r+1 < x) 
                 && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
               momentum = (momentum+1)%4;
@@ -611,6 +625,17 @@ class Personoid {
               break;
             }
           }
+          
+          if (y >= canvas_h - 2) {
+            momentum = (momentum+1)%4;
+            x--;
+            time_of_last_turn = now;
+            break;
+          }
+          
+          ff  = path_map.pixels[(y+2)*canvas_w + x];
+          ffl = path_map.pixels[(y+2)*canvas_w + x+1];
+          ffr = path_map.pixels[(y+2)*canvas_w + x-1];
 
           if ((y+2 < canvas_h)
               && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
@@ -649,13 +674,10 @@ class Personoid {
           
           case 3: // W
           f   = path_map.pixels[(y)*canvas_w   + x-1];
-          ff  = path_map.pixels[(y)*canvas_w   + x-2];
           fl  = path_map.pixels[(y+1)*canvas_w + x-1];
           fll = path_map.pixels[(y+2)*canvas_w + x-1];
           fr  = path_map.pixels[(y-1)*canvas_w + x-1];
           frr = path_map.pixels[(y-2)*canvas_w + x-1];
-          ffl = path_map.pixels[(y+1)*canvas_w + x-2];
-          ffr = path_map.pixels[(y-1)*canvas_w + x-2];
           l   = path_map.pixels[(y+1)*canvas_w   + x];
           ll  = path_map.pixels[(y+2)*canvas_w   + x];
           r   = path_map.pixels[(y-1)*canvas_w   + x];
@@ -665,7 +687,7 @@ class Personoid {
           br  = path_map.pixels[(y-1)*canvas_w + x+1];
           brr = path_map.pixels[(y-2)*canvas_w + x+1];
           
-          if ((city == null) && (time_of_last_turn != last_step) && ((destination.x + destination.r >= x) || (x <= 2))) {
+          if ((city == null) && (time_of_last_turn != last_step) && (destination.x + destination.r >= x)) {
             if ((destination.y - destination.r+1 < y)
                 && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
               momentum = (momentum+1)%4;
@@ -680,6 +702,18 @@ class Personoid {
               break;
             }
           }
+          
+          if (x <= 2) {
+            momentum = (momentum+1)%4;
+            y--;
+            time_of_last_turn = now;
+            break;
+          }
+          
+          ff  = path_map.pixels[(y)*canvas_w   + x-2];
+          ffl = path_map.pixels[(y+1)*canvas_w + x-2];
+          ffr = path_map.pixels[(y-1)*canvas_w + x-2];
+
           if ((x-2 >= 0)
               && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
             x--;
