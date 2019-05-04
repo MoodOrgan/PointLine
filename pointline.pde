@@ -3,15 +3,15 @@
 // may 2018
 
 // TODO
-// rewrite City.display() with gradient
 // rewrite NAV
 //   array OOB error near edges
 //   better collision detection (momentum==N, open pixel at NNW)
 //   when going toward large city, the corner area upsets navigation
 //   DEPART - check neighbors around gate
+// Fade Turn - store active pixels in a data structure instead of looping over every pixel
+// rewrite City.display() with gradient
 // use IntList & array instead of ArrayList
 //   then add shuffle
-// Fade Turn - store active pixels in a data structure instead of looping over every pixel
 // use angles instead of rectilinear paths?
 
 boolean DEBUG = false;
@@ -521,7 +521,7 @@ class Personoid {
         case 1: // E
           f   = path_map.pixels[(y)*canvas_w   + x+1];
           fl  = path_map.pixels[(y-1)*canvas_w + x+1];
-          fll = path_map.pixels[(y-2)*canvas_w + x+1];
+
           fr  = path_map.pixels[(y+1)*canvas_w + x+1];
           frr = path_map.pixels[(y+2)*canvas_w + x+1];
           l   = path_map.pixels[(y-1)*canvas_w   + x];
@@ -541,7 +541,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else if ((destination.y - destination.r+1 <= y)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) {
+                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white)) { //&& (fll == white)) { <-- KLUDGE
               momentum--; if (momentum < 0) { momentum = 3; }
               y--;
               time_of_last_turn = now;
@@ -559,6 +559,7 @@ class Personoid {
           ff  = path_map.pixels[(y)*canvas_w   + x+2];
           ffl = path_map.pixels[(y-1)*canvas_w + x+2];
           ffr = path_map.pixels[(y+1)*canvas_w + x+2];
+          fll = path_map.pixels[(y-2)*canvas_w + x+1];
 
           if ((x+2 <= canvas_w)
               && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
@@ -675,7 +676,7 @@ class Personoid {
           case 3: // W
           f   = path_map.pixels[(y)*canvas_w   + x-1];
           fl  = path_map.pixels[(y+1)*canvas_w + x-1];
-          fll = path_map.pixels[(y+2)*canvas_w + x-1];
+
           fr  = path_map.pixels[(y-1)*canvas_w + x-1];
           frr = path_map.pixels[(y-2)*canvas_w + x-1];
           l   = path_map.pixels[(y+1)*canvas_w   + x];
@@ -695,7 +696,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else if ((destination.y + destination.r-1 >= y)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) {
+                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white)) { // && (fll == white)) { // <-- KLUDGE
               momentum--; if (momentum < 0) { momentum = 3; }
               y++;
               time_of_last_turn = now;
@@ -713,7 +714,8 @@ class Personoid {
           ff  = path_map.pixels[(y)*canvas_w   + x-2];
           ffl = path_map.pixels[(y+1)*canvas_w + x-2];
           ffr = path_map.pixels[(y-1)*canvas_w + x-2];
-
+          fll = path_map.pixels[(y+2)*canvas_w + x-1];
+          
           if ((x-2 >= 0)
               && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
             x--;
