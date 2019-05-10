@@ -15,8 +15,8 @@ boolean DEBUG = false;
 boolean HIRES = false;
 boolean REC   = false;
 
-int canvas_w = 800; //1400;
-int canvas_h = 600; //800;
+int canvas_w = 800;
+int canvas_h = 600;
 
 PImage path_map;
 
@@ -24,7 +24,6 @@ int pixel_index;
 
 color red   = color(255, 0, 0);
 color white = color(255, 255, 255);
-color almost_white = color(254, 254, 254);
 color black = color(0, 0, 0);
 color color_inc = color(1, 1, 1);
 color grey = color(128, 128, 128);
@@ -40,7 +39,7 @@ int init_cities  = 24;
 int made_cities = 0; // for initialization procedure
 ArrayList<City> cities;
 
-int init_population = 256; //512;
+int init_population = 512;
 ArrayList<Personoid> populace;
 
 void settings() {
@@ -91,6 +90,17 @@ void draw() {
     }
     
     if (step_counter % fade_turn_period == 0) {    // FADE TURN
+      if (path_map.pixels[1] == white) { // fix black border
+        for (int i=0; i<canvas_h; i++) {
+          path_map.pixels[i*canvas_w + 0] = black;
+          path_map.pixels[i*canvas_w + canvas_w-1] = black;
+        }
+        for (int j=0; j<canvas_w; j++) {
+          path_map.pixels[j] = black;
+          path_map.pixels[(canvas_h-1)*canvas_w + j] = black;
+        }
+      }
+
       if (cities.size() >= 3) {
         City a, b;
         
@@ -143,16 +153,6 @@ void draw() {
         if (path_map.pixels[x] != white)
           path_map.pixels[x] = color(min((path_map.pixels[x] >> 16 & 0xFF) + 1.0, 255.0)); 
           
-      if (path_map.pixels[1] == almost_white) { // fix black border
-        for (int i=0; i<canvas_h; i++) {
-          path_map.pixels[i*canvas_w + 0] = black;
-          path_map.pixels[i*canvas_w + canvas_w-1] = black;
-        }
-        for (int j=0; j<canvas_w; j++) {
-          path_map.pixels[j] = black;
-          path_map.pixels[(canvas_h-1)*canvas_w + j] = black;
-        }
-      }
     }
 
     path_map.updatePixels();
