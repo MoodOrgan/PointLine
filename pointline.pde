@@ -31,7 +31,7 @@ color grey = color(128, 128, 128);
 
 int step_counter = 0;
 boolean fade_turn;
-int fade_turn_period = 4;
+int fade_turn_period = 5;
 
 int time_step = 1; // milliseconds
 int now;
@@ -141,8 +141,8 @@ void draw() {
       
       for (int x=1; x<canvas_w*canvas_h; x++) // FADE PATHS
         path_map.pixels[x] = color(min((path_map.pixels[x] >> 16 & 0xFF) + 1.0, 255.0));
-      
-      if (step_counter % 256 * fade_turn_period == 0) {
+
+      if (path_map.pixels[30] == white) {
         for (int x=0; x<canvas_w; x++) {
           path_map.set(x, 0, black);
           path_map.set(x, canvas_h-1, black);
