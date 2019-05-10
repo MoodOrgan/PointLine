@@ -4,7 +4,6 @@
 
 // TODO
 // rewrite NAV
-//   array OOB error near edges
 //   better collision detection (momentum==N, open pixel at NNW)
 //   when going toward large city, the corner area upsets navigation
 //   DEPART - check neighbors around gate
@@ -86,9 +85,7 @@ void draw() {
     
     if (step_counter % 8 == 0) {
       fade_turn = true;
-    } else {
-      fade_turn = false;
-    } 
+    }
 
     if (fade_turn) {
       if (cities.size() >= 3) {
@@ -137,10 +134,23 @@ void draw() {
             if (DEBUG) println("\tb: new Personoid(" + populace.size() + ")");
           }
         }
+        fade_turn = false;
       }
       
-      for (int x=0; x<canvas_w*canvas_h; x++) // FADE PATHS
+      for (int x=1; x<canvas_w*canvas_h; x++) // FADE PATHS
         path_map.pixels[x] = color(min((path_map.pixels[x] >> 16 & 0xFF) + 1.0, 255.0));
+      
+      if (step_counter % 256*8 == 0) {
+        for (int x=0; x<canvas_w; x++) {
+          path_map.set(x, 0, black);
+          path_map.set(x, canvas_h-1, black);
+        }
+          
+        for (int y=0; y<canvas_h; y++) {
+          path_map.set(0, y, black);
+          path_map.set(canvas_w-1, y, black);
+        }
+      }
     }
 
     path_map.updatePixels();
@@ -412,11 +422,6 @@ class Personoid {
               break;
           }
 
-        if (x >= canvas_w - c.r_int) { x = canvas_w - c.r_int; } // KLUDGE
-          if (y >= canvas_h - c.r_int) { y = canvas_h - c.r_int; }
-          if (x <= c.r_int) { x = c.r_int; }
-          if (y <= c.r_int) { y = c.r_int; }
-
           if (path_map.pixels[y*canvas_w + x] == white) {
             int city_radius = int(city.target_r);
 
@@ -471,20 +476,12 @@ class Personoid {
               break;
             }
           }
-          
-          if (y <= 2) {
-            momentum = (momentum+1)%4;
-            x++;
-            time_of_last_turn = now;
-            break;
-          }
-          
+
           ff  = path_map.pixels[(y-2)*canvas_w + x];
           ffl = path_map.pixels[(y-2)*canvas_w + x-1];
           ffr = path_map.pixels[(y-2)*canvas_w + x+1];
 
-          if ((y-2 >= 0)
-              && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
             y--; // continue N
           } else {
             if ((destination.x + destination.r-1 > x)
@@ -521,7 +518,7 @@ class Personoid {
         case 1: // E
           f   = path_map.pixels[(y)*canvas_w   + x+1];
           fl  = path_map.pixels[(y-1)*canvas_w + x+1];
-
+          fll = path_map.pixels[(y-2)*canvas_w + x+1];
           fr  = path_map.pixels[(y+1)*canvas_w + x+1];
           frr = path_map.pixels[(y+2)*canvas_w + x+1];
           l   = path_map.pixels[(y-1)*canvas_w   + x];
@@ -541,28 +538,19 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else if ((destination.y - destination.r+1 <= y)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white)) { //&& (fll == white)) { <-- KLUDGE
+                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) { 
               momentum--; if (momentum < 0) { momentum = 3; }
               y--;
               time_of_last_turn = now;
               break;
             }
           }
-          
-          if (x >= canvas_w - 2) {
-            momentum = (momentum+1)%4;
-            y++;
-            time_of_last_turn = now;
-            break;
-          }
-          
+
           ff  = path_map.pixels[(y)*canvas_w   + x+2];
           ffl = path_map.pixels[(y-1)*canvas_w + x+2];
           ffr = path_map.pixels[(y+1)*canvas_w + x+2];
-          fll = path_map.pixels[(y-2)*canvas_w + x+1];
 
-          if ((x+2 <= canvas_w)
-              && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
             x++;
           } else {
             if ((destination.y + destination.r-1 > y)
@@ -626,20 +614,12 @@ class Personoid {
               break;
             }
           }
-          
-          if (y >= canvas_h - 2) {
-            momentum = (momentum+1)%4;
-            x--;
-            time_of_last_turn = now;
-            break;
-          }
-          
+
           ff  = path_map.pixels[(y+2)*canvas_w + x];
           ffl = path_map.pixels[(y+2)*canvas_w + x+1];
           ffr = path_map.pixels[(y+2)*canvas_w + x-1];
 
-          if ((y+2 < canvas_h)
-              && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
             y++;
           } else {
             if ((destination.x - destination.r+1 < x)
@@ -676,7 +656,7 @@ class Personoid {
           case 3: // W
           f   = path_map.pixels[(y)*canvas_w   + x-1];
           fl  = path_map.pixels[(y+1)*canvas_w + x-1];
-
+          fll = path_map.pixels[(y+2)*canvas_w + x-1];
           fr  = path_map.pixels[(y-1)*canvas_w + x-1];
           frr = path_map.pixels[(y-2)*canvas_w + x-1];
           l   = path_map.pixels[(y+1)*canvas_w   + x];
@@ -696,28 +676,19 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else if ((destination.y + destination.r-1 >= y)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white)) { // && (fll == white)) { // <-- KLUDGE
+                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) { 
               momentum--; if (momentum < 0) { momentum = 3; }
               y++;
               time_of_last_turn = now;
               break;
             }
           }
-          
-          if (x <= 2) {
-            momentum = (momentum+1)%4;
-            y--;
-            time_of_last_turn = now;
-            break;
-          }
-          
+
           ff  = path_map.pixels[(y)*canvas_w   + x-2];
           ffl = path_map.pixels[(y+1)*canvas_w + x-2];
           ffr = path_map.pixels[(y-1)*canvas_w + x-2];
-          fll = path_map.pixels[(y+2)*canvas_w + x-1];
           
-          if ((x-2 >= 0)
-              && (f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
             x--;
           } else {
             if ((destination.y - destination.r+1 < y)
@@ -754,7 +725,7 @@ class Personoid {
       }
           
       for (City c : cities) { // CAPTURE
-        if ((time_in_transit > 4) && (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) <= c.r)) {
+        if ((time_in_transit > 4) && (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r)) {
           line(c.x, c.y, x, y);
           city = c;
           in_transit = false;
