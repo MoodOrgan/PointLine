@@ -727,7 +727,9 @@ class Personoid {
       }
           
       for (City c : cities) { // CAPTURE
-        if ((time_in_transit > 4) && (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r_int + 1)) {
+        if (time_in_transit < 2) continue;
+//        if ((time_in_transit > 4) && (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r_int + 1)) {
+        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r_int + 1.5) { //c.r_int + 1) {
           line(c.x, c.y, x, y);
           city = c;
           in_transit = false;
