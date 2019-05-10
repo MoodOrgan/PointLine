@@ -1,36 +1,35 @@
-// pointline
-// by timm mason
-// may 2018
+/////////////////////////////////////////////////////////// .- /////////////////////////////////////////////////////////
+// 
+// timm.mason@gmail.com
+// 201805XX – 20190510
 
 // TODO
 // rewrite NAV
-//   better collision detection (momentum==N, open pixel at NNW)
 //   when going toward large city, the corner area upsets navigation
 //   DEPART - check neighbors around gate
-// Fade Turn - store active pixels in a data structure instead of looping over every pixel
 // add REC mode
 // rewrite City.display() with gradient
-// use IntList & array instead of ArrayList
-//   then add shuffle
 // use angles instead of rectilinear paths?
 
 boolean DEBUG = false;
 boolean HIRES = false;
 boolean REC   = false;
 
-PImage path_map;
-
 int canvas_w = 800; //1400;
 int canvas_h = 600; //800;
 
+PImage path_map;
+
+int pixel_index;
+
 color red   = color(255, 0, 0);
 color white = color(255, 255, 255);
+color almost_white = color(254, 254, 254);
 color black = color(0, 0, 0);
 color color_inc = color(1, 1, 1);
 color grey = color(128, 128, 128);
 
 int step_counter = 0;
-boolean fade_turn;
 int fade_turn_period = 5;
 
 int time_step = 1; // milliseconds
@@ -51,9 +50,14 @@ void settings() {
 void setup() {
   path_map = createImage(canvas_w, canvas_h, RGB);
   path_map.loadPixels();
-  for (int i=0; i<canvas_w; i++) {
-    for (int j=0; j<canvas_h; j++) {
-        path_map.pixels[j*canvas_w + i] = white;
+  
+  for (int i=0; i<canvas_h; i++) {
+    for (int j=0; j<canvas_w; j++) {
+      if ((i==0) || (i==canvas_h-1) || (j==0) || (j==canvas_w-1)) { // black border
+        path_map.pixels[i*canvas_w + j] = black;
+      } else {
+        path_map.pixels[i*canvas_w + j] = white;
+      }
     }
   }
   
@@ -74,10 +78,11 @@ void setup() {
 
 void draw() {
   now = millis();
-  step_counter++;
   path_map.loadPixels();
 
   if (now - time_step > last_step) {
+    step_counter++;
+
     for (int i=0; i<cities.size(); i++) {
       cities.get(i).update();
     }
@@ -85,11 +90,7 @@ void draw() {
       populace.get(i).update();
     }
     
-    if (step_counter % fade_turn_period == 0) {
-      fade_turn = true;
-    }
-
-    if (fade_turn) {
+    if (step_counter % fade_turn_period == 0) {    // FADE TURN
       if (cities.size() >= 3) {
         City a, b;
         
@@ -99,7 +100,7 @@ void draw() {
         } while (a == b);
         
         if ((random(1.0) < 0.09) && (a.residents.size() <= 1) && (b.residents.size() <= 1) 
-            && (now - a.creation_time > 2048) && (now - b.creation_time > 2048)) { // SEEK
+            && (now - a.creation_time > 1024) && (now - b.creation_time > 1024)) { // SEEK
           if (DEBUG) println("SEEK: a = " + a + ",\tb = " + b);
           Personoid p;
           City new_destination;
@@ -136,21 +137,20 @@ void draw() {
             if (DEBUG) println("\tb: new Personoid(" + populace.size() + ")");
           }
         }
-        fade_turn = false;
       }
-      
-      for (int x=1; x<canvas_w*canvas_h; x++) // FADE PATHS
-        path_map.pixels[x] = color(min((path_map.pixels[x] >> 16 & 0xFF) + 1.0, 255.0));
 
-      if (path_map.pixels[30] == white) {
-        for (int x=0; x<canvas_w; x++) {
-          path_map.set(x, 0, black);
-          path_map.set(x, canvas_h-1, black);
-        }
+      for (int x=1; x<canvas_w*canvas_h-1; x++) // FADE PATHS
+        if (path_map.pixels[x] != white)
+          path_map.pixels[x] = color(min((path_map.pixels[x] >> 16 & 0xFF) + 1.0, 255.0)); 
           
-        for (int y=0; y<canvas_h; y++) {
-          path_map.set(0, y, black);
-          path_map.set(canvas_w-1, y, black);
+      if (path_map.pixels[1] == almost_white) { // fix black border
+        for (int i=0; i<canvas_h; i++) {
+          path_map.pixels[i*canvas_w + 0] = black;
+          path_map.pixels[i*canvas_w + canvas_w-1] = black;
+        }
+        for (int j=0; j<canvas_w; j++) {
+          path_map.pixels[j] = black;
+          path_map.pixels[(canvas_h-1)*canvas_w + j] = black;
         }
       }
     }
@@ -234,10 +234,10 @@ class City {
           trial_x = x + int(random(2*r_int))-r_int;
           trial_y = y + int(random(2*r_int))-r_int;
           if ((path_map.pixels[trial_y*canvas_w + trial_x] == white)
-            && (sqrt(pow(abs(trial_x - x), 2) + pow(abs(trial_y - y), 2)) <= r)) {
+              && (sqrt(pow(abs(trial_x - x), 2) + pow(abs(trial_y - y), 2)) <= r)) {
               xy_found = true;
               break;
-            }
+          }
         }
         p = residents.get(j);
         remove_resident(p);
@@ -292,13 +292,9 @@ class City {
 
     if (r <= 1.0) {
       fill(color(red));
-      //stroke(red, 128);
     } else {
       fill(color(min(64.0-6.0*r + (now - last_departure)/96.0, 200), 128)); 
-      //stroke(color(min(64.0-6.0*r + (now - last_departure)/96.0, 200)), 128);
     }
-    //strokeWeight(r);
-    //noFill();
     ellipse(x, y, 4.0*r, 4.0*r);
     fill(color(255, 212));
     ellipse(x, y, 2.0*r, 2.0*r);
@@ -322,10 +318,8 @@ class City {
   void remove_resident(Personoid p) {
     residents.remove(p);
     last_departure = now;
-    p.city = null;
-    p.in_transit = true;
-    p.time_in_city = 0;
-    p.time_in_transit = 0;
+    cities.remove(this); cities.add(this);     // move self to head of cities[]
+    p.exit_city();
   }
   
   void die() {
@@ -376,6 +370,13 @@ class Personoid {
   void die() {
     if (city != null) city.remove_resident(this);
     populace.remove(this);
+  }
+  
+  void exit_city() {
+    city = null;
+    in_transit = true;
+    time_in_city = 0;
+    time_in_transit = 0;
   }
   
   void update() {
@@ -438,7 +439,6 @@ class Personoid {
             destination = null;
             in_transit = false;
             x = city.x; y = city.y;
-            path_map.pixels[y*canvas_w + x] = white;
           }
         }
       }
@@ -748,271 +748,3 @@ class Personoid {
   void display() {
   }
 }
-
-
-
-
-// old NAV
-      
-      /*
-      switch(momentum) {
-        case 0: // N
-          if ((((city != null) && (time_in_transit > int(city.target_r) + 2)) || (city == null))
-          && (time_of_last_turn != last_step)
-              && ((destination.y + destination.r >= y) || (y <= 2))) {
-            if ((destination.x + destination.r-1 > x) && (path_map.pixels[(y)*canvas_w + (x+1)] == white) && (path_map.pixels[(y)*canvas_w + (x+2)] == white)
-                && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-                && (path_map.pixels[(y+1)*canvas_w + (x+2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+2)] == white)) {
-              momentum = (momentum+1)%4;
-              x++;
-              time_of_last_turn = now;
-//              print("prelim N->E\n"); // debug
-              break;
-            } else if ((destination.x - destination.r+1 <= x) && (path_map.pixels[(y)*canvas_w + (x-1)] == white) && (path_map.pixels[(y)*canvas_w + (x-2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-2)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              x--;
-              time_of_last_turn = now;
-//              print("prelim N->W\tmomentum = " + momentum + "\n"); // debug
-              break;
-            }
-          }
-//          print("(x, y) = (" + x + ", " + y + ")\n"); // debug
-          if ((y-2 >= 0) && (path_map.pixels[(y-1)*canvas_w + (x)] == white) && (path_map.pixels[(y-2)*canvas_w + (x)] == white)
-              && ((time_of_last_turn == last_step) || ((path_map.pixels[(y-1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)))) {
-            y--;
-          } else {
-            if ((destination.x + destination.r-1 > x) && (path_map.pixels[(y)*canvas_w + (x+1)] == white) && (path_map.pixels[(y)*canvas_w + (x+2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+2)] == white)) {
-              momentum = (momentum+1)%4;
-              x++;
-              time_of_last_turn = now;
-//              print("postlim N->E\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y)*canvas_w + (x-1)] == white) && (path_map.pixels[(y)*canvas_w + (x-2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-2)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              x--;
-              time_of_last_turn = now;
-//              print("postlim N->W\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y)*canvas_w + (x+1)] == white) && (path_map.pixels[(y)*canvas_w + (x+2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+2)] == white)) {
-              momentum = (momentum+1)%4;
-              x++;
-              time_of_last_turn = now;
-//              print("postlim N->E\n"); // debug
-              break;
-            } else {
-              if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
-                die();
-              } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")"); // debug
-                City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
-                c.add_resident(this);
-              }
-            }
-          }
-          break;
-          
-        case 1: // E
-          if ((((city != null) && (time_in_transit > int(city.target_r) + 2)) || (city == null)) && (time_of_last_turn != last_step)
-              && ((destination.x - destination.r <= x) || (x >= canvas_w - 2))) {
-            if ((destination.y + destination.r-1 > y) && (path_map.pixels[(y+1)*canvas_w + (x)] == white) && (path_map.pixels[(y+2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+2)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+2)*canvas_w + (x-1)] == white)) {
-              momentum = (momentum+1)%4;
-              y++;
-              time_of_last_turn = now;
-//              print("prelim E->S\n"); // debug
-              break;
-            } else if ((destination.y - destination.r+1 <= y) && (path_map.pixels[(y-1)*canvas_w + (x)] == white) && (path_map.pixels[(y-2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y-2)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-2)*canvas_w + (x-1)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              y--;
-              time_of_last_turn = now;
-//              print("prelim E->N\n"); // debug
-              break;
-            }
-          }
-          if ((x+2 <= canvas_w) && (path_map.pixels[(y)*canvas_w + (x+1)] == white) && (path_map.pixels[(y)*canvas_w + (x+2)] == white)
-              && ((time_of_last_turn == last_step) || ((path_map.pixels[(y-1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white)))) {
-            x++;
-          } else {
-            if ((destination.y + destination.r-1 > y) && (path_map.pixels[(y+1)*canvas_w + (x)] == white) && (path_map.pixels[(y+2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+2)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+2)*canvas_w + (x-1)] == white)) {
-              momentum = (momentum+1)%4;
-              y++;
-              time_of_last_turn = now;
-//              print("postlim E->S\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y-1)*canvas_w + (x)] == white) && (path_map.pixels[(y-2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y-2)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-2)*canvas_w + (x-1)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              y--;
-              time_of_last_turn = now;
-//              print("postlim E->N\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y+1)*canvas_w + (x)] == white) && (path_map.pixels[(y+2)*canvas_w + (x)] == white) // !!! BUG !!! ARRayIndexOutOfBoundsException:1120588
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+2)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+2)*canvas_w + (x-1)] == white)) {
-              momentum = (momentum+1)%4;
-              y++;
-              time_of_last_turn = now;
-//              print("postlim E->S\n"); // debug
-              break;
-            } else {
-              if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
-                die();
-              } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")"); // debug
-                City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
-                c.add_resident(this);
-              }
-            }
-          }
-          break;
-          
-          case 2: // S
-          if ((((city != null) && (time_in_transit > int(city.target_r) + 2)) || (city == null)) && (time_of_last_turn != last_step)
-              && ((destination.y - destination.r <= y) || (y >= canvas_h - 2))) {
-            if ((destination.x - destination.r+1 < x) && (path_map.pixels[(y)*canvas_w + (x-1)] == white) && (path_map.pixels[(y)*canvas_w + (x-2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-2)] == white)) {  
-              momentum = (momentum+1)%4;
-              x--;
-              time_of_last_turn = now;
-//              print("prelim S->W\tmomentum = " + momentum + "\n"); // debug
-              break;
-            } else if ((destination.x + destination.r-1 >= x) && (path_map.pixels[(y)*canvas_w + (x+1)] == white) && (path_map.pixels[(y)*canvas_w + (x+2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+2)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              x++;
-              time_of_last_turn = now;
-//              print("prelim S->E\n"); // debug
-              break;
-            }
-          }
-
-          if ((y+2 < canvas_h) && (path_map.pixels[(y+1)*canvas_w + (x)] == white) && (path_map.pixels[(y+2)*canvas_w + (x)] == white) // CRASH array OOB
-              && ((time_of_last_turn == last_step) || ((path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white)))) {
-            y++;
-          } else {
-            if ((destination.x - destination.r+1 < x) && (path_map.pixels[(y)*canvas_w + (x-1)] == white) && (path_map.pixels[(y)*canvas_w + (x-2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-2)] == white)) {  
-              momentum = (momentum+1)%4;
-              x--;
-              time_of_last_turn = now;
-//              print("postlim S->W\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y)*canvas_w + (x+1)] == white) && (path_map.pixels[(y)*canvas_w + (x+2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+2)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              x++;
-              time_of_last_turn = now;
-//              print("postlim S->E\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y)*canvas_w + (x-1)] == white) && (path_map.pixels[(y)*canvas_w + (x-2)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x-2)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-2)] == white)) {  
-              momentum = (momentum+1)%4;
-              x--;
-              time_of_last_turn = now;
-//              print("postlim S->W\n"); // debug
-              break;
-            } else {
-              if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
-                die();
-              } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")"); // debug
-                City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
-                c.add_resident(this);
-              }
-            }
-          }
-          break;
-          
-          case 3: // W
-          if ((((city != null) && (time_in_transit > int(city.target_r)+2)) || (city == null)) && (time_of_last_turn != last_step)
-              && ((destination.x + destination.r >= x) || (x <= 2))) {
-            if ((destination.y - destination.r+1 < y) && (path_map.pixels[(y-1)*canvas_w + (x)] == white) && (path_map.pixels[(y-2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y-2)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-2)*canvas_w + (x+1)] == white)) {
-              momentum = (momentum+1)%4;
-              y--;
-              time_of_last_turn = now;
-//              print("prelim W->N\n"); // debug
-              break;
-            } else if ((destination.y + destination.r-1 >= y) && (path_map.pixels[(y+1)*canvas_w + (x)] == white) && (path_map.pixels[(y+2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white)
-              && (path_map.pixels[(y+2)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+2)*canvas_w + (x-1)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              y++;
-              time_of_last_turn = now;
-//              print("prelim W->S\n"); // debug
-              break;
-            }
-          }
-          if ((x-2 >= 0) && (path_map.pixels[(y)*canvas_w + (x-1)] == white) && (path_map.pixels[(y)*canvas_w + (x-2)] == white)
-              && ((time_of_last_turn == last_step) || ((path_map.pixels[(y+1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white)))) {
-            x--;
-          } else {
-            if ((destination.y - destination.r+1 < y) && (path_map.pixels[(y-1)*canvas_w + (x)] == white) && (path_map.pixels[(y-2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y-2)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-2)*canvas_w + (x+1)] == white)) {
-              momentum = (momentum+1)%4;
-              y--;
-              time_of_last_turn = now;
-//              print("postlim W->N\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y+1)*canvas_w + (x)] == white) && (path_map.pixels[(y+2)*canvas_w + (x)] == white) // <-- CRASH!!!
-              && (path_map.pixels[(y+1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y+1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y+2)*canvas_w + (x+1)] == white) && (path_map.pixels[(y+2)*canvas_w + (x-1)] == white)) {
-              momentum--; if (momentum < 0) { momentum = 3; }
-              y++;
-              time_of_last_turn = now;
-//              print("postlim W->S\n"); // debug
-              break;
-            } else if ((path_map.pixels[(y-1)*canvas_w + (x)] == white) && (path_map.pixels[(y-2)*canvas_w + (x)] == white)
-              && (path_map.pixels[(y-1)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-1)*canvas_w + (x+1)] == white)
-              && (path_map.pixels[(y-2)*canvas_w + (x-1)] == white) && (path_map.pixels[(y-2)*canvas_w + (x+1)] == white)) {
-              momentum = (momentum+1)%4;
-              y--;
-              time_of_last_turn = now;
-//              print("postlim W->N\n"); // debug
-              break;
-            } else {
-              if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
-                die();
-              } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")"); // debug
-                City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
-                c.add_resident(this);
-              }
-            }
-          }
-          break;
-          
-          */
