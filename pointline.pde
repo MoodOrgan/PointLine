@@ -4,9 +4,7 @@
 // 201805XX – 20190510
 
 // TODO
-// rewrite NAV
-//   when going toward large city, the corner area upsets navigation
-//   DEPART - check neighbors around gate
+// NAV:when going toward large city, the corner area upsets navigation
 // add REC mode
 // rewrite City.display() with gradient
 // use angles instead of rectilinear paths?
@@ -29,7 +27,7 @@ color color_inc = color(1, 1, 1);
 color grey = color(128, 128, 128);
 
 int step_counter = 0;
-int fade_turn_period = 5;
+int fade_turn_period = 8;
 
 int time_step = 1; // milliseconds
 int now;
@@ -447,7 +445,7 @@ class Personoid {
 
       switch(momentum) {
         case 0: // N
-          f   = path_map.pixels[(y-1)*canvas_w + x] == white;
+          f   = path_map.pixels[(y-1)*canvas_w   + x] == white;
           fl  = path_map.pixels[(y-1)*canvas_w + x-1] == white;
           ffl = path_map.pixels[(y-2)*canvas_w + x-1] == white;
           fll = path_map.pixels[(y-1)*canvas_w + x-2] == white;
@@ -585,7 +583,7 @@ class Personoid {
           break;
           
           case 2: // S
-          f   = path_map.pixels[(y+1)*canvas_w + x] == white;
+          f   = path_map.pixels[(y+1)*canvas_w   + x] == white;
           fl  = path_map.pixels[(y+1)*canvas_w + x+1] == white;
           ffl = path_map.pixels[(y+2)*canvas_w + x+1] == white;
           fll = path_map.pixels[(y+1)*canvas_w + x+2] == white;
