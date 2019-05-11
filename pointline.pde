@@ -39,7 +39,7 @@ int init_cities  = 24;
 int made_cities = 0; // for initialization procedure
 ArrayList<City> cities;
 
-int init_population = 512;
+int init_population = 384;
 ArrayList<Personoid> populace;
 
 void settings() {
@@ -426,8 +426,6 @@ class Personoid {
           }
 
           if (path_map.pixels[y*canvas_w + x] == white) {
-            int city_radius = int(city.target_r);
-
             if ((city.residents.size() == 1) && (random(1.0) < 0.3)) { // BIRTH
               if (DEBUG) println("BIRTH (" + populace.size() + ")");
               Personoid p = new Personoid(x, y);
