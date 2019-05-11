@@ -9,15 +9,24 @@
 // rewrite City.display() with gradient
 // use angles instead of rectilinear paths?
 
+import java.util.Map;
+import java.util.Set;
+
 boolean DEBUG = false;
 boolean HIRES = false;
 boolean REC   = false;
 
 int canvas_w = 800;
-int canvas_h = 600;
+int canvas_h = 800;
+
+int max_active_pixels = canvas_w * canvas_h / 16;
 
 PImage path_map;
-HashMap<Pixel, Boolean> active_pixels;
+HashMap<Integer, Boolean> active_pixels;
+int active_pixel;
+Set<Integer> active_pixels_keyset;
+Integer active_pixels_array[];
+int num_active_pixels;
 
 int pixel_index;
 
@@ -30,7 +39,7 @@ color grey = color(128, 128, 128);
 int step_counter = 0;
 int fade_turn_period = 8;
 
-int time_step = 1; // milliseconds
+int time_step = 10; // milliseconds
 int now;
 int last_step;
 
@@ -41,13 +50,15 @@ ArrayList<City> cities;
 int init_population = 468;
 ArrayList<Personoid> populace;
 
+
 void settings() {
     size(canvas_w, canvas_h);
 }
 
 void setup() {
   path_map = createImage(canvas_w, canvas_h, RGB);
-  active_pixels = new HashMap<Pixel, Boolean>();
+  active_pixels = new HashMap<Integer, Boolean>(max_active_pixels);
+  active_pixels_array = new Integer[max_active_pixels];
   path_map.loadPixels();
   
   for (int i=0; i<canvas_h; i++) {
@@ -67,9 +78,7 @@ void setup() {
   } 
   
   populace = new ArrayList<Personoid>(init_population);
-  for (int i=0; i<init_population; i++) {
-    new Personoid();
-  }
+  for (int i=0; i<init_population; i++) new Personoid();
   
   now = millis();
   last_step = now;
@@ -77,20 +86,15 @@ void setup() {
 
 void draw() {
   now = millis();
-  path_map.loadPixels();
 
   if (now - time_step > last_step) {
     step_counter++;
 
-    for (int i=0; i<cities.size(); i++) {
-      cities.get(i).update();
-    }
-    for (int i=0; i<populace.size(); i++) {
-      populace.get(i).update();
-    }
+    for (int i = cities.size() - 1; i >= 0; i--) cities.get(i).update();
+    for (int i=populace.size() - 1; i >= 0; i--) populace.get(i).update();
     
     if (step_counter % fade_turn_period == 0) {    // FADE TURN
-      if (path_map.pixels[1] == white) { // fix black border
+      if (path_map.pixels[1] == white) {  // fix black border
         for (int i=0; i<canvas_h; i++) {
           path_map.pixels[i*canvas_w + 0] = black;
           path_map.pixels[i*canvas_w + canvas_w-1] = black;
@@ -149,10 +153,16 @@ void draw() {
         }
       }
 
-      for (int x=1; x<canvas_w*canvas_h-1; x++) // FADE PATHS
-        if (path_map.pixels[x] != white)
-          path_map.pixels[x] = color(min((path_map.pixels[x] >> 16 & 0xFF) + 1.0, 255.0)); 
-          
+      active_pixels_keyset = active_pixels.keySet();
+      num_active_pixels = active_pixels_keyset.size();
+      active_pixels_array = active_pixels_keyset.toArray(active_pixels_array);
+      for (int i=0; i<num_active_pixels; i++) {      // FADE PATHS
+        active_pixel = active_pixels_array[i];
+        path_map.pixels[active_pixel] = color(min((path_map.pixels[active_pixel] >> 16 & 0xFF) + 1.0, 255.0));
+        if (path_map.pixels[active_pixel] == white) {
+          active_pixels.remove(active_pixel);
+        }
+      }          
     }
 
     path_map.updatePixels();
@@ -168,18 +178,6 @@ void draw() {
   }
 }
 
-class Pixel {
-  int x, y;
-  
-  Pixel(int new_x, int new_y) {
-    x = new_x;
-    y = new_y;
-  }
-  
-  int to_pixel_index() {
-    return y * canvas_h + x;
-  }
-}
 
 class City {
   int x, y;
@@ -379,6 +377,10 @@ class Personoid {
     populace.add(this);
   }
   
+  int get_pixel_index() {
+    return y * canvas_w + x;
+  }
+  
   void die() {
     if (city != null) city.remove_resident(this);
     populace.remove(this);
@@ -441,7 +443,7 @@ class Personoid {
               break;
           }
 
-          if (path_map.pixels[y*canvas_w + x] == white) {
+          if (path_map.pixels[get_pixel_index()] == white) {
             if ((city.residents.size() == 1) && (random(1.0) < 0.3)) { // BIRTH
               if (DEBUG) println("BIRTH (" + populace.size() + ")");
               Personoid p = new Personoid(x, y);
@@ -751,12 +753,14 @@ class Personoid {
           c.add_resident(this);
           x = c.x; y = c.y;
           break;
-        } else {
-          path_map.pixels[y*canvas_w + x] = (time_in_transit>225) ? black : color(225 - time_in_transit);
         }
       }
-      
-      time_in_transit++;
+      if (in_transit) {
+        pixel_index = get_pixel_index();
+        path_map.pixels[pixel_index] = (time_in_transit>225) ? black : color(225 - time_in_transit);
+        active_pixels.putIfAbsent(pixel_index, true);
+        time_in_transit++;
+      }
     }
   }
   
