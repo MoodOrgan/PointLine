@@ -37,7 +37,7 @@ int init_cities  = 18;
 int made_cities = 0; // for initialization procedure
 ArrayList<City> cities;
 
-int init_population = 412;
+int init_population = 468;
 ArrayList<Personoid> populace;
 
 void settings() {
@@ -244,7 +244,7 @@ class City {
         if (xy_found) {
           p.x = trial_x;
           p.y = trial_y;
-          p.choose_new_destination();
+          p.choose_new_destination(min(canvas_w, canvas_h));
         } else {
           p.die();
         }
@@ -376,10 +376,10 @@ class Personoid {
     time_in_transit = 0;
   }
   
-  boolean choose_new_destination() {
+  boolean choose_new_destination(int choice_radius) {
     int min = populace.size();
     for (City c : cities) {
-      if ((city != null) && ((abs(c.x - city.x) > canvas_w/3) || (abs(c.y - city.y) > canvas_h/3))) continue;
+      if ((city != null) && ((abs(c.x - city.x) > choice_radius) || (abs(c.y - city.y) > choice_radius))) continue;
       if (c.residents.size() < min) {
         min = c.residents.size();
         destination = c;
@@ -393,8 +393,8 @@ class Personoid {
   void update() {
     if (!in_transit) { // Personoid occupies a city
       time_in_city++;
-      if ((time_in_city > 128) && (city.last_departure < (last_step - time_step*1024))) {
-        choose_new_destination();
+      if ((time_in_city > 64) && (now - city.last_departure > 512)) {//city.last_departure < (last_step - time_step*1024))) {
+        choose_new_destination(min(canvas_w, canvas_h) * 2 / 5);
         if (random(12000) < (city.residents.size() - destination.r_int + 1)) { // DEPART
           int gate;
           do {
