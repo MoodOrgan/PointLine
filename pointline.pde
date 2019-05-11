@@ -33,11 +33,11 @@ int time_step = 1; // milliseconds
 int now;
 int last_step;
 
-int init_cities  = 24;
+int init_cities  = 18;
 int made_cities = 0; // for initialization procedure
 ArrayList<City> cities;
 
-int init_population = 384;
+int init_population = 412;
 ArrayList<Personoid> populace;
 
 void settings() {
@@ -227,12 +227,13 @@ class City {
       int trial_x=0, trial_y=0;
       if (DEBUG) { println("EXPLODE"); }
       for (int j=residents.size()-1; j>=0; j--) {
-        for (int i=0; i<2; i++) {
+        for (int i=0; i<4; i++) {
           xy_found = false;
-          trial_x = x + int(random(2*r_int))-r_int;
-          trial_y = y + int(random(2*r_int))-r_int;
+          trial_x = x + int(random(4.0*r)-r+1.0);
+          trial_y = y + int(random(4.0*r)-r+1.0);
+          if ((trial_x > canvas_w-3) || (trial_x < 3) || (trial_y > canvas_h - 3) || (trial_y < 3)) continue;
           if ((path_map.pixels[trial_y*canvas_w + trial_x] == white)
-              && (sqrt(pow(abs(trial_x - x), 2) + pow(abs(trial_y - y), 2)) <= r)) {
+              && (sqrt(pow(abs(trial_x - x), 2) + pow(abs(trial_y - y), 2)) <= 2.0*r)) {
               xy_found = true;
               break;
           }
@@ -243,9 +244,7 @@ class City {
         if (xy_found) {
           p.x = trial_x;
           p.y = trial_y;
-          do {
-            p.destination = cities.get(int(random(cities.size())));
-          } while (p.destination == this);
+          p.choose_new_destination();
         } else {
           p.die();
         }
@@ -377,25 +376,30 @@ class Personoid {
     time_in_transit = 0;
   }
   
+  boolean choose_new_destination() {
+    int min = populace.size();
+    for (City c : cities) {
+      if ((city != null) && ((abs(c.x - city.x) > canvas_w/3) || (abs(c.y - city.y) > canvas_h/3))) continue;
+      if (c.residents.size() < min) {
+        min = c.residents.size();
+        destination = c;
+        if (min <= 1) return true;
+        if (random(1.0) > 0.95) return true;
+      }
+    }
+    return false;
+  }
+  
   void update() {
     if (!in_transit) { // Personoid occupies a city
       time_in_city++;
       if ((time_in_city > 128) && (city.last_departure < (last_step - time_step*1024))) {
-        int min = populace.size();
-        for (City c : cities) {
-          if ((abs(c.x - city.x) > canvas_w/3) || (abs(c.y - city.y) > canvas_h/3)) continue;
-          if (c.residents.size() < min) {
-            min = c.residents.size();
-            destination = c;
-            if (min <= 1) break;
-            if (random(1.0) > 0.95) break;
-          }
-        }
-        if (random(12000) < (city.residents.size() - min + 1)) { // DEPART
+        choose_new_destination();
+        if (random(12000) < (city.residents.size() - destination.r_int + 1)) { // DEPART
           int gate;
           do {
             gate = int(random(4));
-          } while (((gate == 0) && (destination.y > y)) ||
+          } while (((gate == 0) && (destination.y > y)) || 
                    ((gate == 1) && (destination.x < x)) ||
                    ((gate == 2) && (destination.y < y)) ||
                    ((gate == 3) && (destination.x > x)));
@@ -406,18 +410,18 @@ class Personoid {
           switch (gate) {
             case 0: // N
               x = city.x;
-              y = city.y - int(city.target_r);
+              y = max(city.y - city.r_int, 2);//int(city.target_r);
               break;
             case 1: // E
-              x = city.x + int(city.target_r);
+              x = min(city.x + city.r_int, canvas_w-2);//int(city.target_r);
               y = city.y;
               break;
             case 2: // S
               x = city.x;
-              y = city.y + int(city.target_r);
+              y = min(city.y + city.r_int, canvas_h-2);//int(city.target_r);
               break;
             case 3: // W
-              x = city.x - int(city.target_r);
+              x = max(city.x - city.r_int, 2);//int(city.target_r);
               y = city.y;
               break;
           }
