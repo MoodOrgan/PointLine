@@ -12,14 +12,14 @@
 import java.util.Map;
 import java.util.Set;
 
-boolean DEBUG = false;
+boolean DEBUG = true;
 boolean HIRES = false;
 boolean REC   = false;
 
-int canvas_w = 800;
-int canvas_h = 800;
+int canvas_w = 900;
+int canvas_h = 700;
 
-int max_active_pixels = canvas_w * canvas_h / 16;
+int max_active_pixels = canvas_w * canvas_h / 8;
 
 PImage path_map;
 HashMap<Integer, Boolean> active_pixels;
@@ -40,16 +40,20 @@ color grey = color(128, 128, 128);
 int step_counter = 0;
 int fade_turn_period = 8;
 
-int time_step = 10; // milliseconds
+int time_step = 6; // milliseconds
 int now;
 int last_step;
 
 int init_cities  = 18;
 int made_cities = 0; // for initialization procedure
+int max_cities = 512;
 ArrayList<City> cities;
+City cities_array[];
 
 int init_population = 468;
+int max_populace = 1024;
 ArrayList<Personoid> populace;
+Personoid populace_array[];
 
 
 void settings() {
@@ -73,12 +77,14 @@ void setup() {
   }
   
   cities = new ArrayList<City>(init_cities);
+  cities_array = new City[max_cities];
   for (int i=0; i<init_cities; i++) { // random arrangement
-    cities.add(new City());
+    new City();
     made_cities++;
   } 
   
   populace = new ArrayList<Personoid>(init_population);
+  populace_array = new Personoid[max_populace];
   for (int i=0; i<init_population; i++) new Personoid();
   
   now = millis();
@@ -90,9 +96,17 @@ void draw() {
 
   if (now - time_step > last_step) {
     step_counter++;
-
-    for (int i = cities.size() - 1; i >= 0; i--) cities.get(i).update();
-    for (int i=populace.size() - 1; i >= 0; i--) populace.get(i).update();
+    
+    cities_array = cities.toArray(cities_array);
+    for (int i = cities.size() - 1;   i >= 0; i--) {//cities.get(i).update();
+//      if (cities.get(i) != null) cities.get(i).update();
+      if (cities_array[i] != null) cities_array[i].update();
+    }
+    populace_array = populace.toArray(populace_array);
+    for (int i = populace.size() - 1; i >= 0; i--) {//populace.get(i).update();
+//      if (populace.get(i) != null) populace.get(i).update();
+      if (populace_array[i] != null) populace_array[i].update();
+    }
     
     if (step_counter % fade_turn_period == 0) {    // FADE TURN
       if (cities.size() >= 3) {
@@ -152,7 +166,7 @@ void draw() {
         if (path_map.pixels[active_pixel] == white) {
           active_pixels.remove(active_pixel);
         }
-      }          
+      }
     }
 
     path_map.updatePixels();
@@ -183,7 +197,7 @@ class City {
     
     residents = new ArrayList<Personoid>();
 
-    if (DEBUG) print("city " + made_cities + "\t"); // debug
+    if (DEBUG) print("city " + made_cities + "\t");
     do {
       x = 50 + int(random(canvas_w - 100));
       y = 50 + int(random(canvas_h - 100));
@@ -195,15 +209,15 @@ class City {
           break;
         }
       }
-      println();
+      if (DEBUG) println();
     } while(coordinates_taken);
     
     r = 1.0;
     calculate_r();
-    r_int = int(r);
     creation_time = now;
     last_departure = 0;
     last_city_checked = 0;
+    cities.add(this);
   }
   
   City(int x_in, int y_in) {
@@ -212,17 +226,20 @@ class City {
     y = y_in;
     r = 1.0;
     calculate_r();
-    r_int = int(r);
     creation_time = now;
     last_departure = 0;
     last_city_checked = 0;
+    cities.add(this);
   }
   
   void update() {
     City c;
 
     calculate_r();
-    if (r <= 0.01) die();
+    if (r <= 0.01) {
+      if (DEBUG) println("DEAD CITY wither");
+      die();
+    }
     
     if (r_int > 75) {
       Personoid p;
@@ -249,9 +266,11 @@ class City {
           p.y = trial_y;
           p.choose_new_destination(min(canvas_w, canvas_h));
         } else {
+          if (DEBUG) println("DEATH explosion");
           p.die();
         }
       }
+      if (DEBUG) println("DEAD CITY explosion");
       die();
     }
 
@@ -263,7 +282,6 @@ class City {
       if ((abs(c.x - x) > r_int) || (abs(c.y - y) > r_int)) continue;
   
       if ((x + r_int > c.x + c.r_int) && (x - r_int < c.x - c.r_int) && (y + r_int > c.y + c.r_int) && (y - r_int < c.y - c.r_int)) { //<>//
-  
         if (residents.size() < c.residents.size() * 3) {  // EXCHANGE
           Personoid p;
           if (DEBUG) println("EXCHANGE " + this + " \tsize = " + c.residents.size());
@@ -281,6 +299,7 @@ class City {
             c.remove_resident(p);
             this.add_resident(p);
           }
+          if (DEBUG) println("DEAD CITY absorb");
           c.die();
         }
       }
@@ -308,19 +327,19 @@ class City {
   
   void add_resident(Personoid p) {
     residents.add(p);
-    p.enter_city(this);
+    if (p.city != this) p.enter_city(this);
   }
   
   void remove_resident(Personoid p) {
     residents.remove(p);
     last_departure = now;
     cities.remove(this); cities.add(this);     // move self to tail of cities[]
-    p.exit_city();
+    if (p.city == this) p.exit_city();
   }
   
   void die() {
     // population already cleared ?
-    if (DEBUG) println("DEAD CITY (" + cities.size() + ")");
+    if (DEBUG) println("\tDEAD CITY (" + cities.size() + ")");
     cities.remove(this);
   }
 }
@@ -337,6 +356,7 @@ class Personoid {
   
   Personoid(City c) { // Personoid in City c
     city = c;
+    city.add_resident(this);
     destination = null;
     x = city.x;
     y = city.y;
@@ -370,6 +390,7 @@ class Personoid {
   void die() {
     if (city != null) city.remove_resident(this);
     populace.remove(this);
+    if (DEBUG) println("\tDEAD PERSONOID (" + populace.size() + ")");
   }
   
   void enter_city(City c) {
@@ -378,13 +399,16 @@ class Personoid {
     time_in_city = 0;
     time_in_transit = 0;
     x = c.x; y = c.y;
+    if (c.residents.contains(this)) c.remove_resident(this);
   }
   
   void exit_city() {
+    City c = city;
     city = null;
     in_transit = true;
     time_in_city = 0;
     time_in_transit = 0;
+    if (c.residents.contains(this)) c.remove_resident(this);
   }
   
   boolean choose_new_destination(int choice_radius) {
@@ -567,13 +591,13 @@ class Personoid {
               break;
             } else {
               if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
+                if (DEBUG) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")");
+                if (DEBUG) println("NEW CITY trapped (" + cities.size() + ")");
                 City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
+                if (city != null) exit_city();
+                enter_city(c);
                 c.add_resident(this);
               }
             }
@@ -620,13 +644,13 @@ class Personoid {
               break;
             } else {
               if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
+                if (DEBUG) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")");
+                if (DEBUG) println("NEW CITY trapped (" + cities.size() + ")");
                 City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
+                if (city != null) exit_city();
+                enter_city(c);
                 c.add_resident(this);
               }
             }
@@ -673,13 +697,13 @@ class Personoid {
               break;
             } else {
               if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
+                if (DEBUG) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")"); // debug
+                if (DEBUG) println("NEW CITY trapped (" + cities.size() + ")"); // debug
                 City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
+                if (city != null) exit_city();
+                enter_city(c);
                 c.add_resident(this);
               }
             }
@@ -726,13 +750,13 @@ class Personoid {
               break;
             } else {
               if (random(1.0) < 0.1) {
-                if (DEBUG) println("DEATH (" + populace.size() + ")");
+                if (DEBUG) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
-                if (DEBUG) println("NEW CITY (" + cities.size() + ")");
+                if (DEBUG) println("NEW CITY trapped (" + cities.size() + ")");
                 City c = new City(x, y);
-                cities.add(c);
-                if (city != null) city.remove_resident(this);
+                if (city != null) exit_city();
+                enter_city(c);
                 c.add_resident(this);
               }
             }
