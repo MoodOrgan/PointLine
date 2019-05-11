@@ -318,11 +318,7 @@ class City {
   
   void add_resident(Personoid p) {
     residents.add(p);
-    p.city = this;
-    p.in_transit = false;
-    p.time_in_city = 0;
-    p.time_in_transit = 0;
-    p.x = x; p.y = y;
+    p.enter_city(this);
   }
   
   void remove_resident(Personoid p) {
@@ -384,6 +380,14 @@ class Personoid {
   void die() {
     if (city != null) city.remove_resident(this);
     populace.remove(this);
+  }
+  
+  void enter_city(City c) {
+    city = c;
+    in_transit = false;
+    time_in_city = 0;
+    time_in_transit = 0;
+    x = c.x; y = c.y;
   }
   
   void exit_city() {
@@ -744,14 +748,9 @@ class Personoid {
           
       for (City c : cities) { // CAPTURE
         if (time_in_transit < 2) continue;
-        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r + 1.5) {
-          line(c.x, c.y, x, y);
-          city = c;
-          in_transit = false;
-          time_in_city = 0;
-          time_in_transit = 0;
+        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r + 1.0) {
+          enter_city(c);
           c.add_resident(this);
-          x = c.x; y = c.y;
           break;
         }
       }
