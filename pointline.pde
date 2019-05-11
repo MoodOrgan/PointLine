@@ -316,7 +316,7 @@ class City {
   void remove_resident(Personoid p) {
     residents.remove(p);
     last_departure = now;
-    cities.remove(this); cities.add(this);     // move self to head of cities[]
+    cities.remove(this); cities.add(this);     // move self to tail of cities[]
     p.exit_city();
   }
   
@@ -392,7 +392,6 @@ class Personoid {
           }
         }
         if (random(12000) < (city.residents.size() - min + 1)) { // DEPART
-          City c = city;
           int gate;
           do {
             gate = int(random(4));
@@ -724,7 +723,7 @@ class Personoid {
           
       for (City c : cities) { // CAPTURE
         if (time_in_transit < 2) continue;
-        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r_int + 1.5) {
+        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r + 1.5) {
           line(c.x, c.y, x, y);
           city = c;
           in_transit = false;
