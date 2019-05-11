@@ -443,35 +443,35 @@ class Personoid {
     }
 
     if (in_transit) { // NAVIGATION
-      int f, ff, fl, fll, fr, frr, ffl, ffr, l, ll, r, rr, bl, bll, br, brr;
+      boolean f, ff, fl, fll, fr, frr, ffl, ffr, l, ll, r, rr, bl, bll, br, brr;
 
       switch(momentum) {
         case 0: // N
-          f   = path_map.pixels[(y-1)*canvas_w + x];
-          fl  = path_map.pixels[(y-1)*canvas_w + x-1];
-          ffl = path_map.pixels[(y-2)*canvas_w + x-1];
-          fll = path_map.pixels[(y-1)*canvas_w + x-2];
-          fr  = path_map.pixels[(y-1)*canvas_w + x+1];
-          ffr = path_map.pixels[(y-2)*canvas_w + x+1];
-          frr = path_map.pixels[(y-1)*canvas_w + x+2];
-          l   = path_map.pixels[(y)*canvas_w   + x-1];
-          ll  = path_map.pixels[(y)*canvas_w   + x-2];
-          r   = path_map.pixels[(y)*canvas_w   + x+1];
-          rr  = path_map.pixels[(y)*canvas_w   + x+2];
-          bl  = path_map.pixels[(y+1)*canvas_w + x-1];
-          bll = path_map.pixels[(y+1)*canvas_w + x-2];
-          br  = path_map.pixels[(y+1)*canvas_w + x+1];
-          brr = path_map.pixels[(y+1)*canvas_w + x+2];
+          f   = path_map.pixels[(y-1)*canvas_w + x] == white;
+          fl  = path_map.pixels[(y-1)*canvas_w + x-1] == white;
+          ffl = path_map.pixels[(y-2)*canvas_w + x-1] == white;
+          fll = path_map.pixels[(y-1)*canvas_w + x-2] == white;
+          fr  = path_map.pixels[(y-1)*canvas_w + x+1] == white;
+          ffr = path_map.pixels[(y-2)*canvas_w + x+1] == white;
+          frr = path_map.pixels[(y-1)*canvas_w + x+2] == white;
+          l   = path_map.pixels[(y)*canvas_w   + x-1] == white;
+          ll  = path_map.pixels[(y)*canvas_w   + x-2] == white;
+          r   = path_map.pixels[(y)*canvas_w   + x+1] == white;
+          rr  = path_map.pixels[(y)*canvas_w   + x+2] == white;
+          bl  = path_map.pixels[(y+1)*canvas_w + x-1] == white;
+          bll = path_map.pixels[(y+1)*canvas_w + x-2] == white;
+          br  = path_map.pixels[(y+1)*canvas_w + x+1] == white;
+          brr = path_map.pixels[(y+1)*canvas_w + x+2] == white;
           
           if ((city == null) && (time_of_last_turn != last_step) && (destination.y + destination.r >= y)) { // overshooting; turn...
             if ((destination.x + destination.r-1 > x)
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white) && (ffr == white)) {
+                && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4; // turn E
               x++;
               time_of_last_turn = now;
               break;
             } else if ((destination.x - destination.r+1 <= x)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white) && (ffl == white)) {
+                        && l && ll && bl && fl && bll && fll && ffl) {
               momentum--; if (momentum < 0) { momentum = 3; }
               x--; // turn W
               time_of_last_turn = now;
@@ -479,23 +479,23 @@ class Personoid {
             }
           }
 
-          ff  = path_map.pixels[(y-2)*canvas_w + x];
+          ff  = path_map.pixels[(y-2)*canvas_w + x] == white;
 
-          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
             y--; // continue N
           } else {
             if ((destination.x + destination.r-1 > x)
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+                && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4; // turn E
               x++;
               time_of_last_turn = now;
               break;
-            } else if ((l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) {
+            } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; } // turn W
               x--; 
               time_of_last_turn = now;
               break;
-            } else if ((r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+            } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4; // turn E
               x++;
               time_of_last_turn = now;
@@ -516,31 +516,31 @@ class Personoid {
           break;
           
         case 1: // E
-          f   = path_map.pixels[(y)*canvas_w   + x+1];
-          fl  = path_map.pixels[(y-1)*canvas_w + x+1];
-          ffl = path_map.pixels[(y-1)*canvas_w + x+2];
-          fll = path_map.pixels[(y-2)*canvas_w + x+1];
-          fr  = path_map.pixels[(y+1)*canvas_w + x+1];
-          ffr = path_map.pixels[(y+1)*canvas_w + x+2];
-          frr = path_map.pixels[(y+2)*canvas_w + x+1];
-          l   = path_map.pixels[(y-1)*canvas_w   + x];
-          ll  = path_map.pixels[(y-2)*canvas_w   + x];
-          r   = path_map.pixels[(y+1)*canvas_w   + x];
-          rr  = path_map.pixels[(y+2)*canvas_w   + x];
-          bl  = path_map.pixels[(y-1)*canvas_w + x-1];
-          bll = path_map.pixels[(y-2)*canvas_w + x-1];
-          br  = path_map.pixels[(y+1)*canvas_w + x-1];
-          brr = path_map.pixels[(y+2)*canvas_w + x-1];
+          f   = path_map.pixels[(y)*canvas_w   + x+1] == white;
+          fl  = path_map.pixels[(y-1)*canvas_w + x+1] == white;
+          ffl = path_map.pixels[(y-1)*canvas_w + x+2] == white;
+          fll = path_map.pixels[(y-2)*canvas_w + x+1] == white;
+          fr  = path_map.pixels[(y+1)*canvas_w + x+1] == white;
+          ffr = path_map.pixels[(y+1)*canvas_w + x+2] == white;
+          frr = path_map.pixels[(y+2)*canvas_w + x+1] == white;
+          l   = path_map.pixels[(y-1)*canvas_w   + x] == white;
+          ll  = path_map.pixels[(y-2)*canvas_w   + x] == white;
+          r   = path_map.pixels[(y+1)*canvas_w   + x] == white;
+          rr  = path_map.pixels[(y+2)*canvas_w   + x] == white;
+          bl  = path_map.pixels[(y-1)*canvas_w + x-1] == white;
+          bll = path_map.pixels[(y-2)*canvas_w + x-1] == white;
+          br  = path_map.pixels[(y+1)*canvas_w + x-1] == white;
+          brr = path_map.pixels[(y+2)*canvas_w + x-1] == white;
           
           if ((city == null) && (time_of_last_turn != last_step) && (destination.x - destination.r <= x)) {
             if ((destination.y + destination.r-1 > y)
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white) && (ffr == white)) {
+                && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4;
               y++;
               time_of_last_turn = now;
               break;
             } else if ((destination.y - destination.r+1 <= y)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white) & (ffl == white)) { 
+                        && l && ll && bl && fl && bll && fll & ffl) { 
               momentum--; if (momentum < 0) { momentum = 3; }
               y--;
               time_of_last_turn = now;
@@ -548,23 +548,23 @@ class Personoid {
             }
           }
 
-          ff  = path_map.pixels[(y)*canvas_w   + x+2];
+          ff  = path_map.pixels[(y)*canvas_w   + x+2] == white;
 
-          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
             x++;
           } else {
             if ((destination.y + destination.r-1 > y)
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+                && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
               y++;
               time_of_last_turn = now;
               break;
-            } else if ((l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) {
+            } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; }
               y--;
               time_of_last_turn = now;
               break;
-            } else if ((r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+            } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
               y++;
               time_of_last_turn = now;
@@ -585,31 +585,31 @@ class Personoid {
           break;
           
           case 2: // S
-          f   = path_map.pixels[(y+1)*canvas_w + x];
-          fl  = path_map.pixels[(y+1)*canvas_w + x+1];
-          ffl = path_map.pixels[(y+2)*canvas_w + x+1];
-          fll = path_map.pixels[(y+1)*canvas_w + x+2];
-          fr  = path_map.pixels[(y+1)*canvas_w + x-1];
-          ffr = path_map.pixels[(y+2)*canvas_w + x-1];
-          frr = path_map.pixels[(y+1)*canvas_w + x-2];
-          l   = path_map.pixels[(y)*canvas_w   + x+1];
-          ll  = path_map.pixels[(y)*canvas_w   + x+2];
-          r   = path_map.pixels[(y)*canvas_w   + x-1];
-          rr  = path_map.pixels[(y)*canvas_w   + x-2];
-          bl  = path_map.pixels[(y-1)*canvas_w + x+1];
-          bll = path_map.pixels[(y-1)*canvas_w + x+2];
-          br  = path_map.pixels[(y-1)*canvas_w + x-1];
-          brr = path_map.pixels[(y-1)*canvas_w + x-2];
+          f   = path_map.pixels[(y+1)*canvas_w + x] == white;
+          fl  = path_map.pixels[(y+1)*canvas_w + x+1] == white;
+          ffl = path_map.pixels[(y+2)*canvas_w + x+1] == white;
+          fll = path_map.pixels[(y+1)*canvas_w + x+2] == white;
+          fr  = path_map.pixels[(y+1)*canvas_w + x-1] == white;
+          ffr = path_map.pixels[(y+2)*canvas_w + x-1] == white;
+          frr = path_map.pixels[(y+1)*canvas_w + x-2] == white;
+          l   = path_map.pixels[(y)*canvas_w   + x+1] == white;
+          ll  = path_map.pixels[(y)*canvas_w   + x+2] == white;
+          r   = path_map.pixels[(y)*canvas_w   + x-1] == white;
+          rr  = path_map.pixels[(y)*canvas_w   + x-2] == white;
+          bl  = path_map.pixels[(y-1)*canvas_w + x+1] == white;
+          bll = path_map.pixels[(y-1)*canvas_w + x+2] == white;
+          br  = path_map.pixels[(y-1)*canvas_w + x-1] == white;
+          brr = path_map.pixels[(y-1)*canvas_w + x-2] == white;
           
           if ((city == null) && (time_of_last_turn != last_step) && (destination.y - destination.r <= y)) {
             if ((destination.x - destination.r+1 < x) 
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white) && (ffr == white)) {
+                && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4;
               x--;
               time_of_last_turn = now;
               break;
             } else if ((destination.x + destination.r-1 >= x)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white) && (ffl == white)) {
+                        && l && ll && bl && fl && bll && fll && ffl) {
               momentum--; if (momentum < 0) { momentum = 3; }
               x++;
               time_of_last_turn = now;
@@ -617,23 +617,23 @@ class Personoid {
             }
           }
 
-          ff  = path_map.pixels[(y+2)*canvas_w + x];
+          ff  = path_map.pixels[(y+2)*canvas_w + x] == white;
 
-          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
             y++;
           } else {
             if ((destination.x - destination.r+1 < x)
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+                && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
               x--;
               time_of_last_turn = now;
               break;
-            } else if ((l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) {
+            } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; }
               x++;
               time_of_last_turn = now;
               break;
-            } else if ((r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+            } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
               x--;
               time_of_last_turn = now;
@@ -654,31 +654,31 @@ class Personoid {
           break;
           
           case 3: // W
-          f   = path_map.pixels[(y)*canvas_w   + x-1];
-          fl  = path_map.pixels[(y+1)*canvas_w + x-1];
-          ffl = path_map.pixels[(y+1)*canvas_w + x-2];
-          fll = path_map.pixels[(y+2)*canvas_w + x-1];
-          fr  = path_map.pixels[(y-1)*canvas_w + x-1];
-          ffr = path_map.pixels[(y-1)*canvas_w + x-2];
-          frr = path_map.pixels[(y-2)*canvas_w + x-1];
-          l   = path_map.pixels[(y+1)*canvas_w   + x];
-          ll  = path_map.pixels[(y+2)*canvas_w   + x];
-          r   = path_map.pixels[(y-1)*canvas_w   + x];
-          rr  = path_map.pixels[(y-2)*canvas_w   + x];
-          bl  = path_map.pixels[(y+1)*canvas_w + x+1];
-          bll = path_map.pixels[(y+2)*canvas_w + x+1];
-          br  = path_map.pixels[(y-1)*canvas_w + x+1];
-          brr = path_map.pixels[(y-2)*canvas_w + x+1];
+          f   = path_map.pixels[(y)*canvas_w   + x-1] == white;
+          fl  = path_map.pixels[(y+1)*canvas_w + x-1] == white;
+          ffl = path_map.pixels[(y+1)*canvas_w + x-2] == white;
+          fll = path_map.pixels[(y+2)*canvas_w + x-1] == white;
+          fr  = path_map.pixels[(y-1)*canvas_w + x-1] == white;
+          ffr = path_map.pixels[(y-1)*canvas_w + x-2] == white;
+          frr = path_map.pixels[(y-2)*canvas_w + x-1] == white;
+          l   = path_map.pixels[(y+1)*canvas_w   + x] == white;
+          ll  = path_map.pixels[(y+2)*canvas_w   + x] == white;
+          r   = path_map.pixels[(y-1)*canvas_w   + x] == white;
+          rr  = path_map.pixels[(y-2)*canvas_w   + x] == white;
+          bl  = path_map.pixels[(y+1)*canvas_w + x+1] == white;
+          bll = path_map.pixels[(y+2)*canvas_w + x+1] == white;
+          br  = path_map.pixels[(y-1)*canvas_w + x+1] == white;
+          brr = path_map.pixels[(y-2)*canvas_w + x+1] == white;
           
           if ((city == null) && (time_of_last_turn != last_step) && (destination.x + destination.r >= x)) {
             if ((destination.y - destination.r+1 < y)
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white) && (ffr == white)) {
+                && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4;
               y--;
               time_of_last_turn = now;
               break;
             } else if ((destination.y + destination.r-1 >= y)
-                        && (l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white) && (ffl == white)) { 
+                        && l && ll && bl && fl && bll && fll && ffl) { 
               momentum--; if (momentum < 0) { momentum = 3; }
               y++;
               time_of_last_turn = now;
@@ -686,23 +686,23 @@ class Personoid {
             }
           }
 
-          ff  = path_map.pixels[(y)*canvas_w   + x-2];
+          ff  = path_map.pixels[(y)*canvas_w   + x-2] == white;
           
-          if ((f == white) && (ff == white) && ((time_of_last_turn == last_step) || ((fr == white) && (fl == white)))) {
+          if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
             x--;
           } else {
             if ((destination.y - destination.r+1 < y)
-                && (r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+                && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
               y--;
               time_of_last_turn = now;
               break;
-            } else if ((l == white) && (ll == white) && (bl == white) && (fl == white) && (bll == white) && (fll == white)) {
+            } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; }
               y++;
               time_of_last_turn = now;
               break;
-            } else if ((r == white) && (rr == white) && (br == white) && (fr == white) && (brr == white) && (frr == white)) {
+            } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
               y--;
               time_of_last_turn = now;
@@ -726,8 +726,7 @@ class Personoid {
           
       for (City c : cities) { // CAPTURE
         if (time_in_transit < 2) continue;
-//        if ((time_in_transit > 4) && (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r_int + 1)) {
-        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r_int + 1.5) { //c.r_int + 1) {
+        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r_int + 1.5) {
           line(c.x, c.y, x, y);
           city = c;
           in_transit = false;
