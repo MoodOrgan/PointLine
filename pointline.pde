@@ -17,6 +17,7 @@ int canvas_w = 800;
 int canvas_h = 600;
 
 PImage path_map;
+HashMap<Pixel, Boolean> active_pixels;
 
 int pixel_index;
 
@@ -46,6 +47,7 @@ void settings() {
 
 void setup() {
   path_map = createImage(canvas_w, canvas_h, RGB);
+  active_pixels = new HashMap<Pixel, Boolean>();
   path_map.loadPixels();
   
   for (int i=0; i<canvas_h; i++) {
@@ -163,6 +165,19 @@ void draw() {
     if (HIRES) { filter(BLUR); }
 
     last_step = now;
+  }
+}
+
+class Pixel {
+  int x, y;
+  
+  Pixel(int new_x, int new_y) {
+    x = new_x;
+    y = new_y;
+  }
+  
+  int to_pixel_index() {
+    return y * canvas_h + x;
   }
 }
 
@@ -410,18 +425,18 @@ class Personoid {
           switch (gate) {
             case 0: // N
               x = city.x;
-              y = max(city.y - city.r_int, 2);//int(city.target_r);
+              y = max(city.y - city.r_int, 2);
               break;
             case 1: // E
-              x = min(city.x + city.r_int, canvas_w-2);//int(city.target_r);
+              x = min(city.x + city.r_int, canvas_w-2);
               y = city.y;
               break;
             case 2: // S
               x = city.x;
-              y = min(city.y + city.r_int, canvas_h-2);//int(city.target_r);
+              y = min(city.y + city.r_int, canvas_h-2);
               break;
             case 3: // W
-              x = max(city.x - city.r_int, 2);//int(city.target_r);
+              x = max(city.x - city.r_int, 2);
               y = city.y;
               break;
           }
