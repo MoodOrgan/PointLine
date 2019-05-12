@@ -266,7 +266,7 @@ class City {
     
     if (random(1.0) > 0.9) {
       boolean neighbor_test = true;
-      for (int i = 0; i < sqrt(cities.size()) + 3; i++) {
+      for (int i = 0; i < 16; i++) {
         c = cities.get(int(random(cities.size())));
         if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2.0)) < min(canvas_w, canvas_h)/2) {
           neighbor_test = false;
