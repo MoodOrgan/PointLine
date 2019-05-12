@@ -89,6 +89,8 @@ void setup() {
   
   now = millis();
   last_step = now;
+  
+  noStroke();
 }
 
 void draw() {
@@ -187,6 +189,7 @@ class City {
   float r, target_r;
   int r_int;
   int creation_time;
+  int last_growth = 0;
   int last_departure;
   int last_city_checked;
   ArrayList<Personoid> residents;
@@ -249,6 +252,14 @@ class City {
     if (p.city == this) p.exit_city();
   }
   
+  void growth(int growth_index) {
+    Personoid p;
+    for (int i = 0; i < growth_index; i++) {
+      p = new Personoid(this);
+    }
+    last_growth = step_counter;
+  }
+  
   void die() {
     if (DEBUG > 1) println("\tDEAD CITY (" + cities.size() + ")");
     for (int i = residents.size() - 1; i >= 0; i++ ) residents.get(i).die();
@@ -264,7 +275,7 @@ class City {
       die();
     }
     
-    if (random(1.0) > 0.9) {
+    if ((random(1.0) > 0.93) && (step_counter - last_growth > 128)) {
       boolean neighbor_test = true;
       for (int i = 0; i < 16; i++) {
         c = cities.get(int(random(cities.size())));
@@ -274,8 +285,8 @@ class City {
         }
       }
       if (neighbor_test) {
-        Personoid p = new Personoid(this);
-        if (DEBUG > 0) println("GROWTH (" + x + ", " + y + ")");
+        growth(1);
+        if (DEBUG > 1) println("GROWTH (" + x + ", " + y + ")");
       }
     }
     
@@ -347,12 +358,15 @@ class City {
   }
   
   void display() {
-    noStroke();
+    float grey = min(64.0-6.0*r + (now - last_departure)/96.0, 200);
+    float growth_interval = step_counter - last_growth;
 
     if (r <= 1.0) {
       fill(color(red));
+    } else if (growth_interval < 255.0) {
+      fill(color(grey, max(202 - growth_interval, grey), grey, 128));
     } else {
-      fill(color(min(64.0-6.0*r + (now - last_departure)/96.0, 200), 128)); 
+      fill(color(grey, 128)); 
     }
     ellipse(x, y, 4.0*r, 4.0*r);
     fill(color(255, 212));
@@ -611,7 +625,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.1) {
+              if (random(1.0) < 0.07) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -664,7 +678,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.1) {
+              if (random(1.0) < 0.07) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
