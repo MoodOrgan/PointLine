@@ -40,11 +40,11 @@ color grey = color(128, 128, 128);
 int step_counter = 0;
 int fade_turn_period = 8;
 
-int time_step = 6; // milliseconds
+int time_step = 12; // milliseconds
 int now;
 int last_step;
 
-int init_cities  = 18;
+int init_cities  = 64;
 int made_cities = 0; // for initialization procedure
 int max_cities = 512;
 ArrayList<City> cities;
@@ -107,8 +107,8 @@ void draw() {
     }
     
     if (step_counter % fade_turn_period == 0) {    // FADE TURN
-      if ((DEBUG > 0) && (step_counter % (fade_turn_period * 16) == 0))
-        println(populace.size() + " Personoids\t" + cities.size() + " Cities");
+      if ((DEBUG > 0) && (step_counter % (fade_turn_period * 32) == 0))
+        println((step_counter / fade_turn_period / 32) + ":\t" + populace.size() + " Personoids\t" + cities.size() + " Cities");
         
       if (cities.size() >= 3) {
         City a, b;
@@ -244,8 +244,8 @@ class City {
       Personoid p;
       boolean xy_found = false;
       int trial_x=0, trial_y=0;
-      if (DEBUG > 1) { println("EXPLODE"); }
-      for (int j=residents.size()-1; j>=0; j--) {
+      if (DEBUG > 0) println("EXPLODE"); // DEBUG
+      for (int j = residents.size() - 1; j >= 0; j--) {
         for (int i=0; i<4; i++) {
           xy_found = false;
           trial_x = x + int(random(4.0*r)-r+1.0);
@@ -257,6 +257,7 @@ class City {
               break;
           }
         }
+
         p = residents.get(j);
         remove_resident(p);
 
@@ -269,6 +270,7 @@ class City {
           p.die();
         }
       }
+      
       if (DEBUG > 1) println("\tDEAD CITY explosion");
       die();
     }
@@ -337,8 +339,8 @@ class City {
   }
   
   void die() {
-    // population already cleared ?
     if (DEBUG > 1) println("\tDEAD CITY (" + cities.size() + ")");
+    for (int i = residents.size() - 1; i >= 0; i++ ) residents.get(i).die();
     cities.remove(this);
   }
 }
@@ -387,7 +389,7 @@ class Personoid {
   }
   
   void die() {
-    if (city != null) city.remove_resident(this);
+    if (city != null) exit_city();
     populace.remove(this);
     if (DEBUG > 1) println("\tDEAD PERSONOID (" + populace.size() + ")");
   }
