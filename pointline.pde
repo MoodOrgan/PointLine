@@ -118,7 +118,7 @@ void draw() {
           b = cities.get(int(random(cities.size())));
         } while (a == b);
         
-        if ((random(1.0) < 0.09) && (a.residents.size() <= 1) && (b.residents.size() <= 1) 
+        if ((random(1.0) < 0.09) && (a.residents.size() < 2) && (b.residents.size() < 2) 
             && (now - a.creation_time > 1024) && (now - b.creation_time > 1024)) { // SEEK
           if (DEBUG > 1) println("SEEK: a = (" + a.x + ", " + a.y + "),\tb = (" + b.x + ", " + b.y + ")");
           Personoid p;
@@ -231,6 +231,30 @@ class City {
     cities.add(this);
   }
   
+  void calculate_r() {
+    target_r = float(residents.size());
+    r += (target_r - r) / 100.0;
+    r_int = int(r);
+  }
+  
+  void add_resident(Personoid p) {
+    residents.add(p);
+    if (p.city != this) p.enter_city(this);
+  }
+  
+  void remove_resident(Personoid p) {
+    residents.remove(p);
+    last_departure = now;
+    cities.remove(this); cities.add(this);     // move self to tail of cities[]
+    if (p.city == this) p.exit_city();
+  }
+  
+  void die() {
+    if (DEBUG > 1) println("\tDEAD CITY (" + cities.size() + ")");
+    for (int i = residents.size() - 1; i >= 0; i++ ) residents.get(i).die();
+    cities.remove(this);
+  }
+  
   void update() {
     City c;
 
@@ -240,11 +264,26 @@ class City {
       die();
     }
     
+    if (random(1.0) > 0.9) {
+      boolean neighbor_test = true;
+      for (int i = 0; i < sqrt(cities.size()) + 3; i++) {
+        c = cities.get(int(random(cities.size())));
+        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2.0)) < min(canvas_w, canvas_h)/2) {
+          neighbor_test = false;
+          break;
+        }
+      }
+      if (neighbor_test) {
+        Personoid p = new Personoid(this);
+        if (DEBUG > 0) println("GROWTH (" + x + ", " + y + ")");
+      }
+    }
+    
     if (r_int > 75) {
       Personoid p;
       boolean xy_found = false;
       int trial_x=0, trial_y=0;
-      if (DEBUG > 0) println("EXPLODE"); // DEBUG
+      if (DEBUG > 1) println("EXPLODE");
       for (int j = residents.size() - 1; j >= 0; j--) {
         for (int i=0; i<4; i++) {
           xy_found = false;
@@ -319,30 +358,6 @@ class City {
     fill(color(255, 212));
     ellipse(x, y, 2.0*r, 2.0*r);
   }
-  
-  void calculate_r() {
-    target_r = float(residents.size());
-    r += (target_r - r) / 100.0;
-    r_int = int(r);
-  }
-  
-  void add_resident(Personoid p) {
-    residents.add(p);
-    if (p.city != this) p.enter_city(this);
-  }
-  
-  void remove_resident(Personoid p) {
-    residents.remove(p);
-    last_departure = now;
-    cities.remove(this); cities.add(this);     // move self to tail of cities[]
-    if (p.city == this) p.exit_city();
-  }
-  
-  void die() {
-    if (DEBUG > 1) println("\tDEAD CITY (" + cities.size() + ")");
-    for (int i = residents.size() - 1; i >= 0; i++ ) residents.get(i).die();
-    cities.remove(this);
-  }
 }
 
 class Personoid {
@@ -358,20 +373,22 @@ class Personoid {
   Personoid(City c) { // Personoid in City c
     city = c;
     city.add_resident(this);
-    destination = null;
     x = city.x;
     y = city.y;
+    choose_new_destination(min(canvas_w, canvas_h));
     momentum = int(random(4));
+    in_transit = false;
     populace.add(this);
   }
   
   Personoid() { // Personoid in random City
     city = cities.get(int(random(cities.size())));
     city.add_resident(this);
-    destination = null;
     x = city.x;
     y = city.y;
+    choose_new_destination(min(canvas_w, canvas_h));
     momentum = int(random(4));
+    in_transit = false;
     populace.add(this);
   }
   
@@ -379,6 +396,7 @@ class Personoid {
     city = null;
     x = new_x;
     y = new_y;
+    choose_new_destination(min(canvas_w, canvas_h));
     momentum = int(random(4));
     in_transit = true;
     populace.add(this);
@@ -411,19 +429,19 @@ class Personoid {
     time_in_transit = 0;
     if (c.residents.contains(this)) c.remove_resident(this);
   }
-  
-  boolean choose_new_destination(int choice_radius) {
+
+  City choose_new_destination(int choice_radius) {
     int min = populace.size();
     for (City c : cities) {
       if ((city != null) && ((abs(c.x - city.x) > choice_radius) || (abs(c.y - city.y) > choice_radius))) continue;
       if (c.residents.size() < min) {
         min = c.residents.size();
         destination = c;
-        if (min <= 1) return true;
-        if (random(1.0) > 0.95) return true;
+        if (min <= 1) return c;
+        if (random(1.0) > 0.95) return c;
       }
     }
-    return false;
+    return null;
   }
   
   void update() {
@@ -433,6 +451,8 @@ class Personoid {
         choose_new_destination(min(canvas_w, canvas_h) / 2);
         if (random(12000) < (city.residents.size() - destination.r_int + 1)) { // DEPART
           int gate;
+
+          in_transit = true;
           do {
             gate = int(random(4));
           } while (((gate == 0) && (destination.y > y)) || 
