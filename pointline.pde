@@ -22,10 +22,10 @@ boolean REC   = false;
 int canvas_w = 900;
 int canvas_h = 700;
 
-int max_active_pixels = canvas_w * canvas_h / 16;
 
 PImage path_map;
 HashMap<Integer, Boolean> active_pixels;
+int max_active_pixels = canvas_w * canvas_h / 16;
 int active_pixel;
 Set<Integer> active_pixels_keyset;
 Integer active_pixels_array[];
@@ -57,6 +57,8 @@ int init_population = 1024;
 int max_populace = 4096;
 ArrayList<Personoid> populace;
 Personoid populace_array[];
+
+float trapped_personoid_dies_odds = 0.5;
 
 
 void settings() {
@@ -246,7 +248,6 @@ class City {
   void add_resident(Personoid p) {
     if (!residents.contains(p)) {
       residents.add(p);
-//    if (p.city != this) p.enter_city(this);
       p.enter_city(this);
       calculate_r();
     }
@@ -257,7 +258,6 @@ class City {
       residents.remove(p);
       last_departure = now;
       cities.remove(this); cities.add(this);     // move self to tail of cities[]
-//    if (p.city == this) p.exit_city();
       p.exit_city();
     }
   }
@@ -323,8 +323,9 @@ class City {
         remove_resident(p);
 
         if (xy_found) {
-          p.x = trial_x;
-          p.y = trial_y;
+          p.set_xy(trial_x, trial_y);
+//          p.x = trial_x;
+//          p.y = trial_y;
           p.choose_new_destination(min(canvas_w, canvas_h));
         } else {
           if (DEBUG > 1) println("\tDEATH explosion");
@@ -387,6 +388,7 @@ class City {
 
 class Personoid {
   int x, y;
+  int pixel_index;
   int momentum; // NESW
   boolean in_transit = false;
   City city;
@@ -400,6 +402,7 @@ class Personoid {
     city.add_resident(this);
     x = city.x;
     y = city.y;
+    calculate_pixel_index();
     choose_new_destination(min(canvas_w, canvas_h));
     momentum = int(random(4));
     in_transit = false;
@@ -411,6 +414,7 @@ class Personoid {
     city.add_resident(this);
     x = city.x;
     y = city.y;
+    calculate_pixel_index();
     choose_new_destination(min(canvas_w, canvas_h));
     momentum = int(random(4));
     in_transit = false;
@@ -421,14 +425,19 @@ class Personoid {
     city = null;
     x = new_x;
     y = new_y;
+    calculate_pixel_index();
     choose_new_destination(min(canvas_w, canvas_h));
     momentum = int(random(4));
     in_transit = true;
     populace.add(this);
   }
   
+  void calculate_pixel_index() {
+    pixel_index = y * canvas_w + x;
+  }
+  
   int get_pixel_index() {
-    return y * canvas_w + x;
+    return pixel_index;
   }
   
   void die() {
@@ -456,12 +465,18 @@ class Personoid {
     
   }
   
+  void set_xy(int new_x, int new_y) {
+    x = new_x;
+    y = new_y;
+    calculate_pixel_index();
+  }
+  
   void enter_city(City c) {
     city = c;
     in_transit = false;
     time_in_city = 0;
     time_in_transit = 0;
-    x = c.x; y = c.y;
+    set_xy(x, y);
     c.add_resident(this);
   }
   
@@ -509,20 +524,24 @@ class Personoid {
 
           switch (gate) {
             case 0: // N
-              x = city.x;
-              y = max(city.y - city.r_int, 2);
+              set_xy(city.x, max(city.y - city.r_int, 2));
+//              x = city.x;
+//              y = max(city.y - city.r_int, 2);
               break;
             case 1: // E
-              x = min(city.x + city.r_int, canvas_w-2);
-              y = city.y;
+              set_xy(min(city.x + city.r_int, canvas_w-2), city.y);
+//              x = min(city.x + city.r_int, canvas_w-2);
+//              y = city.y;
               break;
             case 2: // S
-              x = city.x;
-              y = min(city.y + city.r_int, canvas_h-2);
+              set_xy(city.x, min(city.y + city.r_int, canvas_h-2));
+//              x = city.x;
+//              y = min(city.y + city.r_int, canvas_h-2);
               break;
             case 3: // W
-              x = max(city.x - city.r_int, 2);
-              y = city.y;
+              set_xy(max(city.x - city.r_int, 2), city.y);
+//              x = max(city.x - city.r_int, 2);
+//              y = city.y;
               break;
           }
 
@@ -537,7 +556,8 @@ class Personoid {
           } else {
             destination = null;
             in_transit = false;
-            x = city.x; y = city.y;
+            set_xy(city.x, city.y);
+//            x = city.x; y = city.y;
           }
         }
       }
@@ -623,13 +643,15 @@ class Personoid {
             if ((destination.x + destination.r-1 > x)
                 && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4; // turn E
-              x++;
+//              x++;
+              set_xy(x+1, y);
               time_of_last_turn = now;
               break;
             } else if ((destination.x - destination.r+1 <= x)
                         && l && ll && bl && fl && bll && fll && ffl) {
               momentum--; if (momentum < 0) { momentum = 3; }
-              x--; // turn W
+//              x--; // turn W
+              set_xy(x-1, y);
               time_of_last_turn = now;
               break;
             }
@@ -638,26 +660,26 @@ class Personoid {
           ff  = path_map.pixels[(y-2)*canvas_w +   x] == white;
 
           if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
-            y--; // continue N
+            set_xy(x, y-1); //y--; // continue N
           } else {
             if ((destination.x + destination.r-1 > x)
                 && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4; // turn E
-              x++;
+              set_xy(x+1, y);//x++;
               time_of_last_turn = now;
               break;
             } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; } // turn W
-              x--; 
+              set_xy(x-1, y); //x--; 
               time_of_last_turn = now;
               break;
             } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4; // turn E
-              x++;
+              set_xy(x+1, y); //x++;
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.3333333) {
+              if (random(1.0) < trapped_personoid_dies_odds) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -676,13 +698,13 @@ class Personoid {
             if ((destination.y + destination.r-1 > y)
                 && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4;
-              y++;
+              set_xy(x, y+1); //y++;
               time_of_last_turn = now;
               break;
             } else if ((destination.y - destination.r+1 <= y)
                         && l && ll && bl && fl && bll && fll & ffl) { 
               momentum--; if (momentum < 0) { momentum = 3; }
-              y--;
+              set_xy(x, y-1);//y--;
               time_of_last_turn = now;
               break;
             }
@@ -691,26 +713,26 @@ class Personoid {
           ff  = path_map.pixels[(y)*canvas_w   + x+2] == white;
 
           if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
-            x++;
+            set_xy(x+1, y);//x++;
           } else {
             if ((destination.y + destination.r-1 > y)
                 && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
-              y++;
+              set_xy(x, y+1);//y++;
               time_of_last_turn = now;
               break;
             } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; }
-              y--;
+              set_xy(x, y-1);//y--;
               time_of_last_turn = now;
               break;
             } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
-              y++;
+              set_xy(x, y+1);//y++;
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.3333333) {
+              if (random(1.0) < trapped_personoid_dies_odds) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -729,13 +751,13 @@ class Personoid {
             if ((destination.x - destination.r+1 < x) 
                 && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4;
-              x--;
+              set_xy(x-1, y);//x--;
               time_of_last_turn = now;
               break;
             } else if ((destination.x + destination.r-1 >= x)
                         && l && ll && bl && fl && bll && fll && ffl) {
               momentum--; if (momentum < 0) { momentum = 3; }
-              x++;
+              set_xy(x+1, y);//x++;
               time_of_last_turn = now;
               break;
             }
@@ -744,26 +766,26 @@ class Personoid {
           ff  = path_map.pixels[(y+2)*canvas_w +   x] == white;
 
           if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
-            y++;
+            set_xy(x, y+1);//y++;
           } else {
             if ((destination.x - destination.r+1 < x)
                 && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
-              x--;
+              set_xy(x-1, y);//x--;
               time_of_last_turn = now;
               break;
             } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; }
-              x++;
+              set_xy(x+1, y);//x++;
               time_of_last_turn = now;
               break;
             } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
-              x--;
+              set_xy(x-1, y);//x--;
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.3333333) {
+              if (random(1.0) < trapped_personoid_dies_odds) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -782,13 +804,13 @@ class Personoid {
             if ((destination.y - destination.r+1 < y)
                 && r && rr && br && fr && brr && frr && ffr) {
               momentum = (momentum+1)%4;
-              y--;
+              set_xy(x, y-1);//y--;
               time_of_last_turn = now;
               break;
             } else if ((destination.y + destination.r-1 >= y)
                         && l && ll && bl && fl && bll && fll && ffl) { 
               momentum--; if (momentum < 0) { momentum = 3; }
-              y++;
+              set_xy(x, y+1);//y++;
               time_of_last_turn = now;
               break;
             }
@@ -797,26 +819,26 @@ class Personoid {
           ff  = path_map.pixels[(y)*canvas_w   + x-2] == white;
 
           if (f && ff && ((time_of_last_turn == last_step) || (fr && fl))) {
-            x--;
+            set_xy(x-1, y);//x--;
           } else {
             if ((destination.y - destination.r+1 < y)
                 && r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
-              y--;
+              set_xy(x, y-1);//y--;
               time_of_last_turn = now;
               break;
             } else if (l && ll && bl && fl && bll && fll) {
               momentum--; if (momentum < 0) { momentum = 3; }
-              y++;
+              set_xy(x, y+1);//y++;
               time_of_last_turn = now;
               break;
             } else if (r && rr && br && fr && brr && frr) {
               momentum = (momentum+1)%4;
-              y--;
+              set_xy(x, y-1);//y--;
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.3333333) {
+              if (random(1.0) < trapped_personoid_dies_odds) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -843,9 +865,8 @@ class Personoid {
       }
       
       if (in_transit) {
-        pixel_index = get_pixel_index();
-        path_map.pixels[pixel_index] = (time_in_transit>225) ? black : color(225 - time_in_transit);
-        active_pixels.putIfAbsent(pixel_index, true);
+        path_map.pixels[get_pixel_index()] = (time_in_transit>225) ? black : color(225 - time_in_transit);
+        active_pixels.putIfAbsent(get_pixel_index(), true);
         time_in_transit++;
       }
     }
