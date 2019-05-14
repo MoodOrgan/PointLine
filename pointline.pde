@@ -4,8 +4,6 @@
 // 201805XX – 20190513
 
 // TODO
-// put city locations in a lookup table
-// fix CAPTURE to use the city location lookup table
 // memoize distances between cities
 // rewrite GROWTH condition to use memoized distances
 // NAV:when going toward large city, the corner area upsets navigation
@@ -47,18 +45,19 @@ int time_step = 12; // milliseconds
 int now;
 int last_step;
 
-int init_cities  = 64;
-int made_cities = 0; // for initialization procedure
-int max_cities = 512;
+int init_cities  = 32;
+int made_cities = 0;    // used by initialization procedure
+int max_cities = 512;   // not a real maximum, but the init size of the ArrayList cities
+int max_city_population = 75;    // when exceeded, EXPLODE
 ArrayList<City> cities;
 City cities_array[];
 
-int init_population = 1024;
+int init_population = 512;
 int max_populace = 4096;
 ArrayList<Personoid> populace;
 Personoid populace_array[];
 
-float trapped_personoid_dies_odds = 0.5;
+float trapped_personoid_dies_odds = 0.37;
 
 
 void settings() {
@@ -191,6 +190,7 @@ void draw() {
 
 class City {
   int x, y;
+  int pixel_index;
   float r, target_r;
   int r_int;
   int creation_time;
@@ -219,6 +219,7 @@ class City {
       if (DEBUG > 1) println();
     } while(coordinates_taken);
     
+    calculate_pixel_index();
     r = 1.0;
     calculate_r();
     creation_time = now;
@@ -231,6 +232,7 @@ class City {
     residents = new ArrayList<Personoid>();
     x = x_in;
     y = y_in;
+    calculate_pixel_index();
     r = 1.0;
     calculate_r();
     creation_time = now;
@@ -243,6 +245,11 @@ class City {
     target_r = float(residents.size());
     r += (target_r - r) / 100.0;
     r_int = int(r);
+  }
+  
+  int calculate_pixel_index() {
+    pixel_index = y * canvas_w + x;
+    return pixel_index;
   }
   
   void add_resident(Personoid p) {
@@ -301,7 +308,7 @@ class City {
       }
     }
     
-    if (r_int > 75) {
+    if (r_int > max_city_population) {
       Personoid p;
       boolean xy_found = false;
       int trial_x=0, trial_y=0;
@@ -508,44 +515,102 @@ class Personoid {
       time_in_city++;
       if ((time_in_city > 64) && (now - city.last_departure > 512)) {//city.last_departure < (last_step - time_step*1024))) {
         choose_new_destination(min(canvas_w, canvas_h) / 2);
-        if (random(12000) < (city.residents.size() - destination.r_int + 1)) { // DEPART
+//        if (random(12000) < (city.residents.size() - destination.r_int + 1)) { // DEPART
+        if (random(12000) < (city.r - destination.r)) { // DEPART
           int gate;
 
           in_transit = true;
-          do {
+/*          do {
             gate = int(random(4));
           } while (((gate == 0) && (destination.y > y)) || 
                    ((gate == 1) && (destination.x < x)) ||
                    ((gate == 2) && (destination.y < y)) ||
-                   ((gate == 3) && (destination.x > x)));
+                   ((gate == 3) && (destination.x > x)));  */
+          
+          gate = int(random(4));
+          for (int i = 0; i < 4; i++) {
+            switch ((gate + i) % 4) {
+            case 0:   // N
+              if (destination.y > y) continue;
+              if (city.y - city.r_int < 3) continue;
+              set_xy(city.x, max(city.y - city.r_int, 2));
+              break;
+              
+            case 1:   // E
+              if (destination.x < x) continue;
+              if (city.x + city.r_int > canvas_w - 3) continue;
+              set_xy(min(city.x + city.r_int, canvas_w-2), city.y);
+              break;
+              
+            case 2:   // S
+              if (destination.y < y) continue;
+              if (city.y + city.r_int > canvas_h - 3) continue;
+              set_xy(city.x, min(city.y + city.r_int, canvas_h-2));
+              break;
+
+            case 3:   // W
+              if (destination.x > x) continue;
+              if (city.x - city.r_int < 3) continue;
+              set_xy(max(city.x - city.r_int, 2), city.y);
+              break;
+            }
+            if (path_map.pixels[get_pixel_index()] != white) continue;
+          }
+                   
           do {
             momentum = int(random(4));
           } while ((gate + 2) % 4 == momentum);
-
-          switch (gate) {
+          
+          switch (momentum) {
+          case 0:
+            f   = path_map.pixels[(y-1)*canvas_w +   x] == white;
+            fl  = path_map.pixels[(y-1)*canvas_w + x-1] == white;
+            fr  = path_map.pixels[(y-1)*canvas_w + x+1] == white;
+            ff  = path_map.pixels[(y-2)*canvas_w +   x] == white;
+            ffl = path_map.pixels[(y-2)*canvas_w + x-1] == white;
+            ffr = path_map.pixels[(y-2)*canvas_w + x+1] == white;
+            break;
+          case 1:
+            f   = path_map.pixels[(y)*canvas_w   + x+1] == white;
+            fl  = path_map.pixels[(y-1)*canvas_w + x+1] == white;
+            fr  = path_map.pixels[(y+1)*canvas_w + x+1] == white;
+            ff  = path_map.pixels[(y)*canvas_w   + x+2] == white;
+            ffl = path_map.pixels[(y-1)*canvas_w + x+2] == white;
+            ffr = path_map.pixels[(y+1)*canvas_w + x+2] == white;
+            break;
+          case 2:
+            f   = path_map.pixels[(y+1)*canvas_w +   x] == white;
+            fl  = path_map.pixels[(y+1)*canvas_w + x+1] == white;
+            fr  = path_map.pixels[(y+1)*canvas_w + x-1] == white;
+            ff  = path_map.pixels[(y+2)*canvas_w +   x] == white;
+            ffl = path_map.pixels[(y+2)*canvas_w + x+1] == white;
+            ffr = path_map.pixels[(y+2)*canvas_w + x-1] == white;
+            break;
+          case 3:
+            f   = path_map.pixels[(y)*canvas_w   + x-1] == white;
+            fl  = path_map.pixels[(y+1)*canvas_w + x-1] == white;
+            fr  = path_map.pixels[(y-1)*canvas_w + x-1] == white;
+            ff  = path_map.pixels[(y)*canvas_w   + x-2] == white;
+            ffl = path_map.pixels[(y+1)*canvas_w + x-2] == white;
+            ffr = path_map.pixels[(y-1)*canvas_w + x-2] == white;
+            break;
+          }
+/*          switch (gate) {
             case 0: // N
               set_xy(city.x, max(city.y - city.r_int, 2));
-//              x = city.x;
-//              y = max(city.y - city.r_int, 2);
               break;
             case 1: // E
               set_xy(min(city.x + city.r_int, canvas_w-2), city.y);
-//              x = min(city.x + city.r_int, canvas_w-2);
-//              y = city.y;
               break;
             case 2: // S
               set_xy(city.x, min(city.y + city.r_int, canvas_h-2));
-//              x = city.x;
-//              y = min(city.y + city.r_int, canvas_h-2);
               break;
             case 3: // W
               set_xy(max(city.x - city.r_int, 2), city.y);
-//              x = max(city.x - city.r_int, 2);
-//              y = city.y;
               break;
-          }
-
-          if (path_map.pixels[get_pixel_index()] == white) {
+          } */
+          
+          if ((path_map.pixels[get_pixel_index()] == white) && f && fl && fr && ff && ffl && ffr) {
             if ((city.residents.size() == 1) && (random(1.0) < 0.3)) { // BIRTH
               if (DEBUG > 1) println("BIRTH (" + populace.size() + ")");
               Personoid p = new Personoid(x, y);
@@ -553,11 +618,11 @@ class Personoid {
               p.update();
             }
             city.remove_resident(this);
+            in_transit = true;
           } else {
             destination = null;
             in_transit = false;
             set_xy(city.x, city.y);
-//            x = city.x; y = city.y;
           }
         }
       }
