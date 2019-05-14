@@ -1,9 +1,13 @@
-/////////////////////////////////////////////////////////// .- /////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////// •- /////////////////////////////////////////////////////////
 // 
 // timm.mason@gmail.com
 // 201805XX – 20190510
 
 // TODO
+// we're losing Personoids in the long term
+// rewrite GROWTH condition
+// what is the red city appearing in center of larger city phenomenon?
+// there is still occasional crash from coordinate OOB in NAV
 // NAV:when going toward large city, the corner area upsets navigation
 // add REC mode
 // rewrite City.display() with gradient
@@ -241,15 +245,21 @@ class City {
   }
   
   void add_resident(Personoid p) {
-    residents.add(p);
-    if (p.city != this) p.enter_city(this);
+    if (!residents.contains(p)) {
+      residents.add(p);
+//    if (p.city != this) p.enter_city(this);
+      p.enter_city(this);
+    }
   }
   
   void remove_resident(Personoid p) {
-    residents.remove(p);
-    last_departure = now;
-    cities.remove(this); cities.add(this);     // move self to tail of cities[]
-    if (p.city == this) p.exit_city();
+    if (residents.contains(p)) {
+      residents.remove(p);
+      last_departure = now;
+      cities.remove(this); cities.add(this);     // move self to tail of cities[]
+//    if (p.city == this) p.exit_city();
+      p.exit_city();
+    }
   }
   
   void growth(int growth_index) {
@@ -426,13 +436,32 @@ class Personoid {
     if (DEBUG > 1) println("\tDEAD PERSONOID (" + populace.size() + ")");
   }
   
+  void print_info() {
+    println("\tPersonoid #{this.object_id}:");
+    print("\t\t(" + x + ", " + y + ") --> ");
+    if (destination == null) {
+      println("null");
+    } else {
+      println("(#{destination.x}, #{destination.y})");
+    }
+    println("\t\tmomentum = " + momentum);
+    if (city == null) {
+      println("\t\tcity = null");
+    } else {
+      println("\t\tcity = " + city + "\t(" + city.x + ", " + city.y + ")");
+    }
+    println("\t\tin_transit = " + in_transit + "\ttime_in_transit = " + time_in_transit
+            + "\ttime_in_city = " + time_in_city + "\ttime_of_last_turn = " + time_of_last_turn);
+    
+  }
+  
   void enter_city(City c) {
     city = c;
     in_transit = false;
     time_in_city = 0;
     time_in_transit = 0;
     x = c.x; y = c.y;
-    if (c.residents.contains(this)) c.remove_resident(this);
+    c.add_resident(this);
   }
   
   void exit_city() {
@@ -441,7 +470,7 @@ class Personoid {
     in_transit = true;
     time_in_city = 0;
     time_in_transit = 0;
-    if (c.residents.contains(this)) c.remove_resident(this);
+    c.remove_resident(this);
   }
 
   City choose_new_destination(int choice_radius) {
@@ -514,6 +543,8 @@ class Personoid {
     }
 
     if (in_transit) { // NAVIGATION
+      if ((y+2) * canvas_w + x + 2 > canvas_w * canvas_h) print_info(); // DEBUG
+
       switch(momentum) {
         case 0: // N
           f   = path_map.pixels[(y-1)*canvas_w +   x] == white;
