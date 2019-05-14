@@ -1,17 +1,16 @@
 /////////////////////////////////////////////////////////// •- /////////////////////////////////////////////////////////
 // 
 // timm.mason@gmail.com
-// 201805XX – 20190510
+// 201805XX – 20190513
 
 // TODO
-// we're losing Personoids in the long term
-// rewrite GROWTH condition
-// what is the red city appearing in center of larger city phenomenon?
-// there is still occasional crash from coordinate OOB in NAV
+// put city locations in a lookup table
+// fix CAPTURE to use the city location lookup table
+// memoize distances between cities
+// rewrite GROWTH condition to use memoized distances
 // NAV:when going toward large city, the corner area upsets navigation
 // add REC mode
 // rewrite City.display() with gradient
-// use angles instead of rectilinear paths?
 
 import java.util.Map;
 import java.util.Set;
@@ -54,8 +53,8 @@ int max_cities = 512;
 ArrayList<City> cities;
 City cities_array[];
 
-int init_population = 512;
-int max_populace = 1024;
+int init_population = 1024;
+int max_populace = 4096;
 ArrayList<Personoid> populace;
 Personoid populace_array[];
 
@@ -249,6 +248,7 @@ class City {
       residents.add(p);
 //    if (p.city != this) p.enter_city(this);
       p.enter_city(this);
+      calculate_r();
     }
   }
   
@@ -278,6 +278,7 @@ class City {
   
   void update() {
     City c;
+    boolean neighbor_test;
 
     calculate_r();
     if (r <= 0.01) {
@@ -286,7 +287,7 @@ class City {
     }
     
     if ((random(1.0) > 0.93) && (step_counter - last_growth > 128)) {
-      boolean neighbor_test = true;
+      neighbor_test = true;
       for (int i = 0; i < 16; i++) {
         c = cities.get(int(random(cities.size())));
         if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2.0)) < min(canvas_w, canvas_h)/2) {
@@ -656,7 +657,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.07) {
+              if (random(1.0) < 0.3333333) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -709,7 +710,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.07) {
+              if (random(1.0) < 0.3333333) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -762,7 +763,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.1) {
+              if (random(1.0) < 0.3333333) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -815,7 +816,7 @@ class Personoid {
               time_of_last_turn = now;
               break;
             } else {
-              if (random(1.0) < 0.1) {
+              if (random(1.0) < 0.3333333) {
                 if (DEBUG > 1) println("DEATH trapped (" + populace.size() + ")");
                 die();
               } else {
@@ -831,14 +832,16 @@ class Personoid {
       
       }
           
-      for (City c : cities) { // CAPTURE
-        if (time_in_transit < 2) continue;
-        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r + 0.9) {
-          enter_city(c);
-          c.add_resident(this);
-          break;
+      if (time_in_transit > 1) {
+        for (City c : cities) { // CAPTURE
+          if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2)) < c.r + 0.9) {
+            enter_city(c);
+            c.add_resident(this);
+            break;
+          }
         }
       }
+      
       if (in_transit) {
         pixel_index = get_pixel_index();
         path_map.pixels[pixel_index] = (time_in_transit>225) ? black : color(225 - time_in_transit);
