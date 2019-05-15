@@ -4,8 +4,8 @@
 // 201805XX – 20190513
 
 // TODO
-// memoize distances between cities
-// rewrite GROWTH condition to use memoized distances
+// change GROWTH to use proximity to canvas edges
+// keep array of distance_map entries to delete in die()
 // NAV:when going toward large city, the corner area upsets navigation
 // add REC mode
 // rewrite City.display() with gradient
@@ -31,6 +31,8 @@ int num_active_pixels;
 int pixel_index;
 
 boolean f, ff, fl, fll, fr, frr, ffl, ffr, l, ll, r, rr, bl, bll, br, brr;
+int x_min = canvas_w, x_max = 0, y_min = canvas_h, y_max = 0;
+City city_N, city_E, city_S, city_W;
 
 color red   = color(255, 0, 0);
 color white = color(255, 255, 255);
@@ -51,13 +53,14 @@ int max_cities = 512;   // not a real maximum, but the init size of the ArrayLis
 int max_city_population = 75;    // when exceeded, EXPLODE
 ArrayList<City> cities;
 City cities_array[];
+HashMap<IndexPair, Float> distance_map;
 
 int init_population = 512;
 int max_populace = 4096;
 ArrayList<Personoid> populace;
 Personoid populace_array[];
 
-float trapped_personoid_dies_odds = 0.37;
+float trapped_personoid_dies_odds = 0.88;
 
 
 void settings() {
@@ -68,6 +71,7 @@ void setup() {
   path_map = createImage(canvas_w, canvas_h, RGB);
   active_pixels = new HashMap<Integer, Boolean>(max_active_pixels);
   active_pixels_array = new Integer[max_active_pixels];
+  distance_map = new HashMap<IndexPair, Float>(max_cities * max_cities);
   path_map.loadPixels();
   
   for (int i=0; i<canvas_h; i++) {
@@ -97,6 +101,39 @@ void setup() {
   noStroke();
 }
 
+void growth_select() {
+  switch (int(random(6))) {
+    case 0:
+      if (city_N == null) {
+        for (City c : cities)
+          if (c.y < y_min) { y_min = c.y; city_N = c; }
+      }
+      city_N.growth(1);
+      break;
+    case 1:
+      if (city_E == null) {
+        for (City c : cities)
+          if (c.x > x_max) { x_max = c.x; city_E = c; }
+      }
+      city_E.growth(1);
+      break;
+    case 2:
+      if (city_S == null) {
+        for (City c : cities)
+          if (c.y > y_max) { y_max = c.y; city_S = c; }
+      }
+      city_S.growth(1);
+      break;
+    case 3:
+      if (city_W == null) {
+        for (City c : cities)
+          if (c.x < x_min) { x_min = c.x; city_W = c; }
+      }
+      city_W.growth(1);
+      break;
+  }
+}
+
 void draw() {
   now = millis();
 
@@ -107,14 +144,21 @@ void draw() {
     for (int i = cities.size() - 1;   i >= 0; i--) {
       if (cities_array[i] != null) cities_array[i].update();
     }
+        
     populace_array = populace.toArray(populace_array);
     for (int i = populace.size() - 1; i >= 0; i--) {
       if (populace_array[i] != null) populace_array[i].update();
     }
     
     if (step_counter % fade_turn_period == 0) {    // FADE TURN
-      if ((DEBUG > 0) && (step_counter % (fade_turn_period * 32) == 0))
-        println((step_counter / fade_turn_period / 32) + ":\t" + populace.size() + " Personoids\t" + cities.size() + " Cities");
+      if (step_counter % (fade_turn_period * 32) == 0) {
+        growth_select();
+
+        if (DEBUG > 0) {
+          println((step_counter / fade_turn_period / 32) + ":\t" + populace.size() + " Personoids\t" + cities.size() + " Cities");
+          println("\t\t" + distance_map.size() + " entries in distance_map"); // DEBUG
+        }
+      }
         
       if (cities.size() >= 3) {
         City a, b;
@@ -187,6 +231,33 @@ void draw() {
   }
 }
 
+ class IndexPair {  // store a pair of pixel indices - this is a key for distance_map
+  int a, b;
+  
+  IndexPair(int a_new, int b_new) {
+    if (a_new < b_new) {
+      a = a_new;
+      b = b_new;
+    } else {
+      a = b_new;
+      b = a_new;
+    }
+  }
+  
+  public boolean equals(Object obj) {
+    if (obj == this) return true;
+    if (!(obj instanceof IndexPair)) return false;
+    IndexPair new_ip = (IndexPair) obj;
+    return (new_ip.a == this.a) && (new_ip.b == this.b);
+  }
+  
+  public int hashCode() {
+    int result=17;
+    result=31*result+a;
+    result=31*result+b;
+    return result;
+  }
+}
 
 class City {
   int x, y;
@@ -194,7 +265,7 @@ class City {
   float r, target_r;
   int r_int;
   int creation_time;
-  int last_growth = 0;
+  int last_growth = step_counter;
   int last_departure;
   int last_city_checked;
   ArrayList<Personoid> residents;
@@ -226,6 +297,7 @@ class City {
     last_departure = 0;
     last_city_checked = 0;
     cities.add(this);
+    update_cityNESW();
   }
   
   City(int x_in, int y_in) {
@@ -239,6 +311,14 @@ class City {
     last_departure = 0;
     last_city_checked = 0;
     cities.add(this);
+    update_cityNESW();
+  }
+  
+  void update_cityNESW() {
+    if (x > x_max) { x_max = x; city_E = this; }
+    if (x < x_min) { x_min = x; city_W = this; }
+    if (y > y_max) { y_max = y; city_S = this; }
+    if (y < y_min) { y_min = y; city_N = this; }
   }
   
   void calculate_r() {
@@ -247,9 +327,26 @@ class City {
     r_int = int(r);
   }
   
-  int calculate_pixel_index() {
+  private int calculate_pixel_index() {
     pixel_index = y * canvas_w + x;
     return pixel_index;
+  }
+  
+  int get_pixel_index() {
+    return pixel_index;
+  }
+  
+  float get_distance_to_city(City c) {
+    float d;
+    IndexPair ip = new IndexPair(this.get_pixel_index(), c.get_pixel_index());
+    
+    if (distance_map.containsKey(ip)) {
+      return distance_map.get(ip);
+    } else {
+      d = sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2.0));
+      distance_map.put(ip, d);
+      return d;
+    }
   }
   
   void add_resident(Personoid p) {
@@ -281,31 +378,20 @@ class City {
     if (DEBUG > 1) println("\tDEAD CITY (" + cities.size() + ")");
     for (int i = residents.size() - 1; i >= 0; i++ ) residents.get(i).die();
     cities.remove(this);
+    
+    if (city_N == this) { city_N = null; y_min = canvas_h; }
+    if (city_E == this) { city_E = null; x_max = 0; }
+    if (city_S == this) { city_S = null; y_max = 0; }
+    if (city_W == this) { city_W = null; x_min = canvas_w; }
   }
   
   void update() {
     City c;
-    boolean neighbor_test;
 
     calculate_r();
     if (r <= 0.01) {
       if (DEBUG > 1) println("DEAD CITY wither");
       die();
-    }
-    
-    if ((random(1.0) > 0.93) && (step_counter - last_growth > 128)) {
-      neighbor_test = true;
-      for (int i = 0; i < 16; i++) {
-        c = cities.get(int(random(cities.size())));
-        if (sqrt(pow(abs(c.x - x), 2) + pow(abs(c.y - y), 2.0)) < min(canvas_w, canvas_h)/2) {
-          neighbor_test = false;
-          break;
-        }
-      }
-      if (neighbor_test) {
-        growth(1);
-        if (DEBUG > 1) println("GROWTH (" + x + ", " + y + ")");
-      }
     }
     
     if (r_int > max_city_population) {
